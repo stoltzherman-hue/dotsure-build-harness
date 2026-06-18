@@ -1,7 +1,8 @@
-import type { Metadata } from "next"
+﻿import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { Concierge } from "@/components/Concierge"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <div className="main">{children}</div>
         </div>
+        <Concierge />
       </body>
     </html>
   )
