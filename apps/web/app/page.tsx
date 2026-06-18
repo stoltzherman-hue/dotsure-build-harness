@@ -47,7 +47,7 @@ export default function Dashboard() {
       <div className="page-head">
         <div>
           <h1>Good morning, Herman</h1>
-          <p>AI Build Harness ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â governance platform</p>
+          <p>AI Build Harness — governance platform</p>
         </div>
         <Link href="/projects/new">
           <button className="btn btn-org">+ Register project</button>
