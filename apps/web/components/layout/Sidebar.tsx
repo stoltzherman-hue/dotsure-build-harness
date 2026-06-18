@@ -1,63 +1,49 @@
 "use client"
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-  LayoutDashboard, FolderOpen, Plus, Database,
-  GitBranch, Shield, Rocket, Coins, FileText, Users, ChevronRight
-} from "lucide-react"
 
 const nav = [
   { section: "Overview", items: [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/", label: "Dashboard", d: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" },
   ]},
   { section: "Projects", items: [
-    { href: "/projects", label: "All projects", icon: FolderOpen },
-    { href: "/projects/new", label: "Register project", icon: Plus },
+    { href: "/projects", label: "All projects", d: "M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" },
+    { href: "/projects/new", label: "Register project", d: "M12 5v14M5 12h14" },
   ]},
   { section: "Governance", items: [
-    { href: "/catalogue", label: "Tech catalogue", icon: Database },
-    { href: "/github", label: "GitHub governance", icon: GitBranch },
-    { href: "/compliance", label: "Compliance", icon: Shield },
-    { href: "/deployments", label: "Deployments", icon: Rocket },
+    { href: "/catalogue", label: "Tech catalogue", d: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
+    { href: "/github", label: "GitHub governance", d: "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.44 5.44 0 0016.5 3c-.98.63-2 1-3 1s-2.01-.37-3-1a5.44 5.44 0 00-3.5 1.77 5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22" },
+    { href: "/compliance", label: "Compliance", d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+    { href: "/deployments", label: "Deployments", d: "M5 12h14M12 5l7 7-7 7" },
   ]},
   { section: "Finance", items: [
-    { href: "/finops", label: "FinOps", icon: Coins },
+    { href: "/finops", label: "FinOps", d: "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" },
   ]},
   { section: "Audit", items: [
-    { href: "/audit", label: "Audit log", icon: FileText },
+    { href: "/audit", label: "Audit log", d: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" },
   ]},
   { section: "Admin", items: [
-    { href: "/users", label: "Users & roles", icon: Users },
+    { href: "/users", label: "Users & roles", d: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
   ]},
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
   return (
-    <div className="w-52 min-h-screen flex flex-col" style={{background:"var(--grey-900)"}}>
-      <div className="px-4 py-4 border-b border-white/10">
-        <div className="text-sm font-bold" style={{color:"var(--orange)"}}>build harness</div>
-        <div className="text-xs mt-0.5" style={{color:"rgba(255,255,255,0.3)", letterSpacing:"1.5px"}}>DOTSURE GOVERNANCE</div>
+    <div className="sidebar">
+      <div className="sb-logo">
+        <div className="sb-brand">build harness</div>
+        <div className="sb-sub">Dotsure governance</div>
       </div>
-      <nav className="flex-1 py-2 overflow-y-auto">
+      <nav className="sb-nav">
         {nav.map(group => (
           <div key={group.section}>
-            <div className="px-4 py-1.5 text-xs font-bold uppercase tracking-widest" style={{color:"rgba(255,255,255,0.25)", fontSize:"9px"}}>
-              {group.section}
-            </div>
+            <div className="nb">{group.section}</div>
             {group.items.map(item => {
               const active = pathname === item.href
-              const Icon = item.icon
               return (
-                <Link key={item.href} href={item.href}
-                  className="flex items-center gap-2 px-4 py-1.5 text-xs transition-all"
-                  style={{
-                    color: active ? "var(--orange)" : "rgba(255,255,255,0.45)",
-                    borderLeft: active ? "3px solid var(--orange)" : "3px solid transparent",
-                    background: active ? "rgba(255,135,0,0.07)" : "transparent"
-                  }}>
-                  <Icon size={14} />
+                <Link key={item.href} href={item.href} className={"ni" + (active ? " active" : "")}>
+                  <svg viewBox="0 0 24 24"><path d={item.d}/></svg>
                   {item.label}
                 </Link>
               )
@@ -65,11 +51,11 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-      <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{background:"var(--orange)"}}>HS</div>
+      <div className="sb-user">
+        <div className="sb-av">HS</div>
         <div>
-          <div className="text-xs font-semibold" style={{color:"rgba(255,255,255,0.8)"}}>Herman Stoltz</div>
-          <div style={{color:"rgba(255,255,255,0.3)", fontSize:"9px"}}>General Manager</div>
+          <div className="sb-un">Herman Stoltz</div>
+          <div className="sb-ur">General Manager</div>
         </div>
       </div>
     </div>
