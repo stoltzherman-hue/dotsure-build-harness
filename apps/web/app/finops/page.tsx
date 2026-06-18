@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 "use client"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
@@ -56,7 +57,7 @@ export default function Finops() {
             <div className="form-group"><label className="form-label">Project</label>
               <select className="form-input" value={form.projectId} onChange={e=>setForm(f=>({...f,projectId:e.target.value}))}>
                 <option value="">Select project</option>
-                {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} — {p.name}</option>)}
+                {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} â€” {p.name}</option>)}
               </select>
             </div>
             <div className="form-row" style={{marginBottom:12}}>
@@ -103,7 +104,7 @@ export default function Finops() {
               return (
                 <div key={c.id} className="tbl-row" style={{gridTemplateColumns:"1fr 120px 100px 90px 80px"}}>
                   <span style={{fontWeight:600}}>{c.vendorName}</span>
-                  <span style={{color:"var(--g500)",fontSize:11}}>{p?.projectCode||"—"}</span>
+                  <span style={{color:"var(--g500)",fontSize:11}}>{p?.projectCode||"â€”"}</span>
                   <span><span className="badge badge-pending">{c.costCategory}</span></span>
                   <span style={{color:"var(--g500)",fontSize:11}}>{new Date(c.createdAt).toLocaleDateString("en-ZA")}</span>
                   <span style={{fontWeight:700,color:"var(--org)",textAlign:"right"}}>R{proj(Number(c.amountZar))}</span>

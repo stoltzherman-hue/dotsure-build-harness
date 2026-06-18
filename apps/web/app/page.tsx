@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 "use client"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
@@ -46,7 +47,7 @@ export default function Dashboard() {
       <div className="page-head">
         <div>
           <h1>Good morning, Herman</h1>
-          <p>AI Build Harness — governance platform</p>
+          <p>AI Build Harness â€” governance platform</p>
         </div>
         <Link href="/projects/new">
           <button className="btn btn-org">+ Register project</button>
@@ -63,7 +64,7 @@ export default function Dashboard() {
           <div key={k.label} className="kcard">
             <div className="kcard-accent" style={{background:k.color}}></div>
             <div className="kcard-label">{k.label}</div>
-            <div className="kcard-value">{loading ? "—" : k.value}</div>
+            <div className="kcard-value">{loading ? "â€”" : k.value}</div>
             <div className="kcard-sub">{k.sub}</div>
           </div>
         ))}

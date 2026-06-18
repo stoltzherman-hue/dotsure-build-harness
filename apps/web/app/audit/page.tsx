@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 "use client"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
@@ -26,7 +27,7 @@ export default function Audit() {
   return (
     <div className="content">
       <div className="page-head">
-        <div><h1>Audit log</h1><p>{logs.length} entries — immutable record of all platform actions</p></div>
+        <div><h1>Audit log</h1><p>{logs.length} entries â€” immutable record of all platform actions</p></div>
       </div>
 
       <div className="card">
@@ -48,11 +49,11 @@ export default function Audit() {
           <span>Action</span><span>Entity</span><span>User</span><span style={{textAlign:"right"}}>Time</span>
         </div>
         {loading ? <div className="empty">Loading...</div> : filtered.length === 0 ? (
-          <div className="empty">{logs.length?"No entries match your filter":"No audit events yet — actions you take will appear here"}</div>
+          <div className="empty">{logs.length?"No entries match your filter":"No audit events yet â€” actions you take will appear here"}</div>
         ) : filtered.map(l => (
           <div key={l.id} className="audit-row">
             <span className="audit-action">{l.actionType}</span>
-            <span className="audit-entity">{l.entityType} · {l.entityId.slice(0,8)}...</span>
+            <span className="audit-entity">{l.entityType} Â· {l.entityId.slice(0,8)}...</span>
             <span className="audit-user">{l.userId||"system"}</span>
             <span className="audit-time">{new Date(l.loggedAt).toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}</span>
           </div>

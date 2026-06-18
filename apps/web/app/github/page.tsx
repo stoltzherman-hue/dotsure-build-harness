@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 "use client"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
@@ -70,7 +71,7 @@ export default function Github() {
           <div key={k.label} className="kcard">
             <div className="kcard-accent" style={{background:k.color}}></div>
             <div className="kcard-label">{k.label}</div>
-            <div className="kcard-value" style={{color:k.color}}>{loading?"—":k.count}</div>
+            <div className="kcard-value" style={{color:k.color}}>{loading?"â€”":k.count}</div>
           </div>
         ))}
       </div>
@@ -84,7 +85,7 @@ export default function Github() {
               <div className="form-group" style={{margin:0}}><label className="form-label">Linked project *</label>
                 <select className="form-input" value={form.projId} onChange={e=>setForm(f=>({...f,projId:e.target.value}))}>
                   <option value="">Select project</option>
-                  {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} — {p.name}</option>)}
+                  {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} â€” {p.name}</option>)}
                 </select>
               </div>
             </div>
