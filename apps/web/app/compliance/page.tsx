@@ -1,5 +1,5 @@
-export const dynamic = "force-dynamic"
 "use client"
+export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
 
@@ -62,12 +62,12 @@ export default function Compliance() {
   return (
     <div className="content">
       <div className="page-head">
-        <div><h1>Compliance assessments</h1><p>SA insurance regulatory framework â€” 8 domains assessed per project</p></div>
+        <div><h1>Compliance assessments</h1><p>SA insurance regulatory framework ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â 8 domains assessed per project</p></div>
       </div>
 
       {loading ? <div className="empty">Loading...</div> : projects.length === 0 ? (
         <div className="empty" style={{background:"var(--wh)",border:"1px solid var(--g100)",borderRadius:10,padding:40}}>
-          Register a project first â€” compliance assessments are generated automatically
+          Register a project first ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â compliance assessments are generated automatically
         </div>
       ) : projects.map(p => {
         const a = getLatest(p.id)

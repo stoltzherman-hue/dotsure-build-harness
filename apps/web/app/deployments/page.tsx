@@ -1,5 +1,5 @@
-export const dynamic = "force-dynamic"
 "use client"
+export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
 
@@ -62,7 +62,7 @@ export default function Deployments() {
               <div className="form-group" style={{margin:0}}><label className="form-label">Project *</label>
                 <select className="form-input" value={form.projectId} onChange={e=>setForm(f=>({...f,projectId:e.target.value}))}>
                   <option value="">Select project</option>
-                  {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} â€” {p.name}</option>)}
+                  {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {p.name}</option>)}
                 </select>
               </div>
               <div className="form-group" style={{margin:0}}><label className="form-label">Target environment *</label>
@@ -96,7 +96,7 @@ export default function Deployments() {
           <div key={d.id} className="card">
             <div className="card-head">
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span className="proj-id">{p?.projectCode||"â€”"}</span>
+                <span className="proj-id">{p?.projectCode||"ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â"}</span>
                 <span style={{fontWeight:600,fontSize:13}}>{p?.name||"Unknown project"}</span>
                 <span className={"badge "+envBadge(d.environment)}>{d.environment}</span>
                 {d.versionTag && <span className="badge badge-pending">{d.versionTag}</span>}
@@ -122,7 +122,7 @@ export default function Deployments() {
               </div>
               {allApproved && d.status==="PENDING" && (
                 <div style={{background:"var(--grn-lt)",borderRadius:7,padding:"8px 12px",fontSize:11,color:"var(--grn-dk)",fontWeight:600}}>
-                  All gates approved â€” deployment may proceed
+                  All gates approved ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â deployment may proceed
                 </div>
               )}
             </div>

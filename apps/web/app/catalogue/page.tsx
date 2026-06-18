@@ -1,5 +1,5 @@
-export const dynamic = "force-dynamic"
 "use client"
+export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
 
@@ -86,14 +86,14 @@ export default function Catalogue() {
 
       {loading ? <div className="empty">Loading...</div> : filtered.length === 0 ? (
         <div className="empty" style={{background:"var(--wh)",border:"1px solid var(--g100)",borderRadius:10,padding:40}}>
-          {techs.length ? "No technologies in this category" : "No technologies in catalogue yet â€” add the first one"}
+          {techs.length ? "No technologies in this category" : "No technologies in catalogue yet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â add the first one"}
         </div>
       ) : (
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
           {filtered.map(t=>(
             <div key={t.id} className="tech-card">
               <div className="tech-card-name">{t.name}</div>
-              <div className="tech-card-vendor">{t.vendor} Â· {t.category}</div>
+              <div className="tech-card-vendor">{t.vendor} Ãƒâ€šÃ‚Â· {t.category}</div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 <span className={"badge "+statusBadge(t.lifecycleStatus)}>{t.lifecycleStatus}</span>
                 <span className="badge badge-pending">{t.costTier} cost</span>
