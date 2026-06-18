@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  azureAdId  String   @unique
+  email      String   @unique
+  fullName   String
+  department String?
+  isActive   Boolean  @default(true)
+  lastLogin  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Project {
+  id                 String    @id @default(uuid())
+  projectCode        String    @unique
+  name               String
+  description        String?
+  businessProblem    String?
+  department         String
+  businessOwnerId    String?
+  technicalOwnerId   String?
+  costCentre         String?
+  expectedBenefits   String?
+  estimatedUsers     Int?
+  expectedSavingsZar Decimal?
+  targetGoLive       DateTime?
+  projectType        String
+  status             String    @default("REGISTERED")
+  riskTier           String?
+  riskScore          Decimal?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdBy          String?
+  riskAssessments       RiskAssessment[]
+  complianceAssessments ComplianceAssessment[]
+  repositories          Repository[]
+  deployments           Deployment[]
+  costRecords           CostRecord[]
+}
+
+model RiskAssessment {
+  id                     String   @id @default(uuid())
+  projectId              String
+  project                Project  @relation(fields: [projectId], references: [id])
+  assessedAt             DateTime @default(now())
+  assessedBy             String?
+  scoreVersion           String   @default("v1.0")
+  totalScore             Decimal
+  riskTier               String
+  questionnaireResponses Json
+  overrideReason         String?
+  overrideBy             String?
+  overrideAt             DateTime?
+}
+
+model ComplianceAssessment {
+  id                   String   @id @default(uuid())
+  projectId            String
+  project              Project  @relation(fields: [projectId], references: [id])
+  assessedAt           DateTime @default(now())
+  assessedBy           String?
+  rulesVersion         String   @default("v1.0")
+  popiaScore           Decimal?
+  faisScore            Decimal?
+  pprTcfScore          Decimal?
+  insuranceActScore    Decimal?
+  aiGovernanceScore    Decimal?
+  cloudScore           Decimal?
+  dataResidencyScore   Decimal?
+  outsourcingScore     Decimal?
+  overallScore         Decimal
+  certificateIssued    Boolean  @default(false)
+  certificateIssuedAt  DateTime?
+  certificateExpiresAt DateTime?
+}
+
+model Repository {
+  id               String    @id @default(uuid())
+  projectId        String
+  project          Project   @relation(fields: [projectId], references: [id])
+  githubRepoName   String
+  githubRepoUrl    String
+  ownerId          String?
+  environment      String
+  deploymentMethod String?
+  governanceScore  Decimal?
+  governanceStatus String?
+  lastValidatedAt  DateTime?
+  isActive         Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  controlResults   RepositoryControlResult[]
+  deployments      Deployment[]
+}
+
+model RepositoryControlResult {
+  id                    String     @id @default(uuid())
+  repositoryId          String
+  repository            Repository @relation(fields: [repositoryId], references: [id])
+  validatedAt           DateTime   @default(now())
+  validationTrigger     String?
+  isPrivate             Boolean?
+  mfaEnabled            Boolean?
+  branchProtection      Boolean?
+  secretScanning        Boolean?
+  codeownersPresent     Boolean?
+  prReviewsRequired     Boolean?
+  dependabotEnabled     Boolean?
+  securityPolicyPresent Boolean?
+  calculatedScore       Decimal
+}
+
+model Deployment {
+  id                     String     @id @default(uuid())
+  projectId              String
+  project                Project    @relation(fields: [projectId], references: [id])
+  repositoryId           String?
+  repository             Repository? @relation(fields: [repositoryId], references: [id])
+  environment            String
+  versionTag             String?
+  requestedBy            String?
+  requestedAt            DateTime   @default(now())
+  rollbackPlan           String?
+  documentationComplete  Boolean    @default(false)
+  monitoringConfigured   Boolean    @default(false)
+  uatSignedOff           Boolean    @default(false)
+  dpiaComplete           Boolean?
+  complianceApproved     Boolean    @default(false)
+  complianceApprovedBy   String?
+  complianceApprovedAt   DateTime?
+  securityApproved       Boolean    @default(false)
+  securityApprovedBy     String?
+  securityApprovedAt     DateTime?
+  architectureApproved   Boolean    @default(false)
+  architectureApprovedBy String?
+  architectureApprovedAt DateTime?
+  uatSignedOffBy         String?
+  uatSignedOffAt         DateTime?
+  status                 String     @default("PENDING")
+  deployedAt             DateTime?
+}
+
+model Technology {
+  id                     String    @id @default(uuid())
+  name                   String
+  category               String
+  vendor                 String?
+  lifecycleStatus        String    @default("APPROVED")
+  securityRating         String?
+  dataResidencyCompliant Boolean?
+  popiaCompliant         Boolean?
+  costTier               String?
+  approvedUseCases       String[]
+  description            String?
+  notes                  String?
+  approvedBy             String?
+  approvedAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}
+
+model CostRecord {
+  id           String    @id @default(uuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id])
+  costCentre   String?
+  department   String?
+  vendorName   String?
+  costCategory String?
+  amountZar    Decimal
+  periodStart  DateTime?
+  periodEnd    DateTime?
+  source       String    @default("MANUAL_ENTRY")
+  enteredBy    String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+}
+
+model AuditLog {
+  id                String   @id @default(uuid())
+  loggedAt          DateTime @default(now())
+  userId            String?
+  userRolesSnapshot Json?
+  actionType        String
+  entityType        String
+  entityId          String
+  previousState     Json?
+  newState          Json
+  ipAddress         String?
+  sessionReference  String?
+  recordHash        String?
+  source            String   @default("api")
+}
