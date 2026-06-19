@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 export const dynamic = "force-dynamic"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase"
@@ -120,7 +120,7 @@ export default function RegisterProject() {
               <div className="form-group" style={{margin:0}}><label className="form-label">Target go-live</label><input className="form-input" type="date" value={form.targetGoLive} onChange={e=>set("targetGoLive",e.target.value)}/></div>
             </div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              <button className="btn btn-org" onClick={step2}>Continue to risk questions Ã¢â€ â€™</button>
+              <button className="btn btn-org" onClick={step2}>Continue to risk questions</button>
             </div>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function RegisterProject() {
 
       {step === 2 && (
         <div className="card">
-          <div className="card-head"><h3>Step 2: Risk assessment</h3><span style={{fontSize:10,color:"var(--g500)"}}>Plain language Ã¢â‚¬â€ we handle the scoring</span></div>
+          <div className="card-head"><h3>Step 2: Risk assessment</h3><span style={{fontSize:10,color:"var(--g500)"}}>Plain language - we handle the scoring</span></div>
           <div className="card-body">
             {questions.map(q => (
               <div key={q.key} className="rq">
@@ -141,8 +141,8 @@ export default function RegisterProject() {
               </div>
             ))}
             <div style={{display:"flex",justifyContent:"space-between",marginTop:12}}>
-              <button className="btn btn-ghost" onClick={()=>setStep(1)}>Ã¢â€ Â Back</button>
-              <button className="btn btn-org" onClick={submit} disabled={saving}>{saving?"Saving...":"Register & calculate risk Ã¢â€ â€™"}</button>
+              <button className="btn btn-ghost" onClick={()=>setStep(1)}>Back</button>
+              <button className="btn btn-org" onClick={submit} disabled={saving}>{saving?"Saving...":"Register & calculate risk"}</button>
             </div>
           </div>
         </div>

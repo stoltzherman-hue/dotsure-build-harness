@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 export const dynamic = "force-dynamic"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
@@ -71,7 +71,7 @@ export default function Github() {
           <div key={k.label} className="kcard">
             <div className="kcard-accent" style={{background:k.color}}></div>
             <div className="kcard-label">{k.label}</div>
-            <div className="kcard-value" style={{color:k.color}}>{loading?"ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â":k.count}</div>
+            <div className="kcard-value" style={{color:k.color}}>{loading ? "-" : k.count}</div>
           </div>
         ))}
       </div>
@@ -85,7 +85,7 @@ export default function Github() {
               <div className="form-group" style={{margin:0}}><label className="form-label">Linked project *</label>
                 <select className="form-input" value={form.projId} onChange={e=>setForm(f=>({...f,projId:e.target.value}))}>
                   <option value="">Select project</option>
-                  {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â {p.name}</option>)}
+                  {projects.map(p=><option key={p.id} value={p.id}>{p.projectCode} - {p.name}</option>)}
                 </select>
               </div>
             </div>
@@ -117,7 +117,7 @@ export default function Github() {
               </div>
             </div>
             <div style={{display:"flex",justifyContent:"flex-end"}}>
-              <button className="btn btn-org" onClick={save}>Register & score</button>
+              <button className="btn btn-org" onClick={save}>Register &amp; score</button>
             </div>
           </div>
         </div>

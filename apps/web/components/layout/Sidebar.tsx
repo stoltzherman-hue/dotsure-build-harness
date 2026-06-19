@@ -1,9 +1,13 @@
-﻿"use client"
+"use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
 const nav = [
   { section: "Overview", items: [{ href: "/", label: "Dashboard", d: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" }]},
+  { section: "Build", items: [
+    { href: "/pipeline", label: "Build pipeline", d: "M13 2L3 14h9l-1 8 10-12h-9l1-8z" },
+    { href: "/library", label: "Project library", d: "M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 014 17V5a2 2 0 012-2h12a2 2 0 012 2v12M4 19.5V21" },
+  ]},
   { section: "Projects", items: [
     { href: "/projects", label: "All projects", d: "M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" },
     { href: "/projects/new", label: "Register project", d: "M12 5v14M5 12h14" },

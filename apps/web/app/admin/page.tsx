@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import { useState, useEffect } from "react"
 
 export default function Admin() {
@@ -30,7 +30,7 @@ export default function Admin() {
       </div>
       <div className="card" style={{maxWidth:580}}>
         <div className="card-head">
-          <h3>Governance Concierge — Anthropic API key</h3>
+          <h3>Governance Concierge - Anthropic API key</h3>
           {hasKey && <span className="badge badge-ok">Key saved</span>}
         </div>
         <div className="card-body">

@@ -38,17 +38,16 @@ export default function Catalogue() {
         <div><h1>Technology catalogue</h1><p>Approved technologies for use across all Dotsure projects</p></div>
         <button className="btn btn-org" onClick={()=>setShowForm(s=>!s)}>+ Add technology</button>
       </div>
-
       {showForm && (
         <div className="card">
           <div className="card-head"><h3>Add technology</h3><button className="btn btn-ghost btn-sm" onClick={()=>setShowForm(false)}>Cancel</button></div>
           <div className="card-body">
             <div className="form-row" style={{marginBottom:12}}>
-              <div className="form-group" style={{margin:0}}><label className="form-label">Name *</label><input className="form-input" placeholder="e.g. Claude API" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
+              <div className="form-group" style={{margin:0}}><label className="form-label">Name</label><input className="form-input" placeholder="e.g. Claude API" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
               <div className="form-group" style={{margin:0}}><label className="form-label">Vendor</label><input className="form-input" placeholder="e.g. Anthropic" value={form.vendor} onChange={e=>setForm(f=>({...f,vendor:e.target.value}))}/></div>
             </div>
             <div className="form-row-3" style={{marginBottom:12}}>
-              <div className="form-group" style={{margin:0}}><label className="form-label">Category *</label>
+              <div className="form-group" style={{margin:0}}><label className="form-label">Category</label>
                 <select className="form-input" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
                   {categories.filter(c=>c!=="All").map(c=><option key={c}>{c}</option>)}
                 </select>
@@ -72,28 +71,26 @@ export default function Catalogue() {
                 <input type="checkbox" style={{accentColor:"var(--org)"}} checked={form.dataResidencyCompliant} onChange={e=>setForm(f=>({...f,dataResidencyCompliant:e.target.checked}))}/>SA data residency
               </label>
             </div>
-            <div className="form-group"><label className="form-label">Approved use cases (comma separated)</label><input className="form-input" placeholder="e.g. AI assistant, content generation, summarisation" value={form.approvedUseCases} onChange={e=>setForm(f=>({...f,approvedUseCases:e.target.value}))}/></div>
+            <div className="form-group"><label className="form-label">Approved use cases (comma separated)</label><input className="form-input" placeholder="e.g. AI assistant, content generation" value={form.approvedUseCases} onChange={e=>setForm(f=>({...f,approvedUseCases:e.target.value}))}/></div>
             <div style={{display:"flex",justifyContent:"flex-end"}}><button className="btn btn-org" onClick={save}>Add to catalogue</button></div>
           </div>
         </div>
       )}
-
       <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
         {categories.map(c=>(
           <button key={c} className={"btn btn-sm "+(cat===c?"btn-org":"btn-ghost")} onClick={()=>setCat(c)}>{c}</button>
         ))}
       </div>
-
       {loading ? <div className="empty">Loading...</div> : filtered.length === 0 ? (
         <div className="empty" style={{background:"var(--wh)",border:"1px solid var(--g100)",borderRadius:10,padding:40}}>
-          {techs.length ? "No technologies in this category" : "No technologies in catalogue yet ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â add the first one"}
+          {techs.length ? "No technologies in this category" : "No technologies in catalogue yet - add the first one"}
         </div>
       ) : (
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
           {filtered.map(t=>(
             <div key={t.id} className="tech-card">
               <div className="tech-card-name">{t.name}</div>
-              <div className="tech-card-vendor">{t.vendor} Ãƒâ€šÃ‚Â· {t.category}</div>
+              <div className="tech-card-vendor">{t.vendor} - {t.category}</div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 <span className={"badge "+statusBadge(t.lifecycleStatus)}>{t.lifecycleStatus}</span>
                 <span className="badge badge-pending">{t.costTier} cost</span>

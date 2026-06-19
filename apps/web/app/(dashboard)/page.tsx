@@ -65,7 +65,7 @@ export default function Dashboard() {
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold" style={{color:"var(--grey-900)"}}>Good morning, Herman</h1>
-          <p className="text-sm mt-0.5" style={{color:"var(--grey-500)"}}>AI Build Harness — governance platform</p>
+          <p className="text-sm mt-0.5" style={{color:"var(--grey-500)"}}>AI Build Harness - governance platform</p>
         </div>
         <Link href="/projects/new">
           <button className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{background:"var(--orange)"}}>
@@ -79,7 +79,7 @@ export default function Dashboard() {
           <div key={k.label} className="bg-white rounded-xl border p-4 relative overflow-hidden" style={{borderColor:"var(--grey-100)"}}>
             <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{background:k.accent}}></div>
             <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{color:"var(--grey-500)"}}>{k.label}</div>
-            <div className="text-3xl font-bold" style={{color:"var(--grey-900)"}}>{loading ? "—" : k.value}</div>
+            <div className="text-3xl font-bold" style={{color:"var(--grey-900)"}}>{loading ? "-" : k.value}</div>
           </div>
         ))}
       </div>

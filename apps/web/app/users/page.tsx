@@ -59,7 +59,7 @@ export default function Users() {
 
       <div className="card">
         <div className="card-head"><h3>Platform users</h3><span style={{fontSize:11,color:"var(--g500)"}}>{users.length} users</span></div>
-        {users.length === 0 ? <div className="empty">No users added yet — users are provisioned via Azure AD in production</div> : (
+        {users.length === 0 ? <div className="empty">No users added yet - users are provisioned via Azure AD in production</div> : (
           <>
             <div className="tbl-head" style={{gridTemplateColumns:"1fr 180px 110px 80px"}}>
               <span>Name</span><span>Email</span><span>Role</span><span>Status</span>
