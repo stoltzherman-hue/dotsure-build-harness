@@ -128,7 +128,7 @@ Be conversational and thorough. Show your reasoning. Think out loud.`
         setState(s => ({ ...s, stage: "AWAITING_USER_SCOPE" }))
         addMessage("system", "Agent 1 has a question. Answer below to continue.")
       }
-      if (sessionId) try { await supabase.from("PipelineSession").update({ stage: "AWAITING_USER_SCOPE", status: "AWAITING_USER" }).eq("id", sessionId)
+      try { if (sessionId) await supabase.from("PipelineSession").update({ stage: "AWAITING_USER_SCOPE", status: "AWAITING_USER" }).eq("id", sessionId) } catch {}
     } catch (e: any) { addMessage("system", `Error: ${e.message}`) }
     setStreaming(false)
   }
@@ -482,6 +482,7 @@ export default function PipelinePage() {
     </Suspense>
   )
 }
+
 
 
 
