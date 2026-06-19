@@ -283,9 +283,9 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
       const evidencePack = agentText.includes("EVIDENCE PACK") ? agentText.split("## EVIDENCE PACK")[1]?.trim() || "" : ""
 
       const docs = [
-        { filename: "product.md", content: state.productMd, generatedBy: "agent-1" },
-        { filename: "techstack.md", content: state.techstackMd, generatedBy: "agent-2" },
-        { filename: "governance.md", content: state.governanceMd, generatedBy: "agent-3" },
+        { filename: "product.md", content: state.productMd || "No content", generatedBy: "agent-1" },
+        { filename: "techstack.md", content: state.techstackMd || "No content", generatedBy: "agent-2" },
+        { filename: "governance.md", content: state.governanceMd || "No content", generatedBy: "agent-3" },
         ...(evidencePack ? [{ filename: "evidence-pack.md", content: evidencePack, generatedBy: "agent-3" }] : []),
       ]
 
@@ -482,6 +482,7 @@ export default function PipelinePage() {
     </Suspense>
   )
 }
+
 
 
 
