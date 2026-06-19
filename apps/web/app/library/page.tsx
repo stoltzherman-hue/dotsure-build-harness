@@ -19,6 +19,11 @@ export default function Library() {
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Doc | null>(null)
   const [filter, setFilter] = useState("ALL")
+  const [pushModal, setPushModal] = useState(false)
+  const [ghToken, setGhToken] = useState("")
+  const [ghRepo, setGhRepo] = useState("")
+  const [pushing, setPushing] = useState(false)
+  const [pushStatus, setPushStatus] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -36,6 +41,39 @@ export default function Library() {
   }, [])
 
   const getProject = (id: string) => projects.find(p => p.id === id)
+
+  const handleEmail = () => {
+    if (!selected) return
+    const subject = encodeURIComponent(`${selected.filename} - Dotsure Build Harness`)
+    const body = encodeURIComponent(selected.content)
+    window.open(`mailto:?subject=${subject}&body=${body}`)
+  }
+
+  const handlePush = async () => {
+    if (!selected || !ghToken || !ghRepo) return
+    setPushing(true)
+    setPushStatus(null)
+    try {
+      const project = getProject(selected.projectId)
+      const path = `docs/${project?.projectCode || selected.projectId}/${selected.filename}`
+      const getRes = await fetch(`https://api.github.com/repos/${ghRepo}/contents/${path}`, {
+        headers: { Authorization: `Bearer ${ghToken}`, Accept: "application/vnd.github+json" }
+      })
+      const existing = getRes.ok ? await getRes.json() : null
+      const content = btoa(unescape(encodeURIComponent(selected.content)))
+      const res = await fetch(`https://api.github.com/repos/${ghRepo}/contents/${path}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${ghToken}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" },
+        body: JSON.stringify({ message: `docs: add ${selected.filename} for ${project?.projectCode || selected.projectId}`, content, ...(existing?.sha ? { sha: existing.sha } : {}) })
+      })
+      if (!res.ok) throw new Error((await res.json()).message)
+      setPushStatus("success")
+    } catch (e: any) {
+      setPushStatus(e.message || "Push failed")
+    } finally {
+      setPushing(false)
+    }
+  }
   const filtered = filter === "ALL" ? docs : docs.filter(d => d.filename === filter)
   const grouped = filtered.reduce((acc: Record<string, Doc[]>, doc) => { acc[doc.projectId] = acc[doc.projectId] || []; acc[doc.projectId].push(doc); return acc }, {})
 
@@ -106,12 +144,38 @@ export default function Library() {
               <div style={{ padding: "12px 16px", maxHeight: "60vh", overflowY: "auto" }}>
                 <pre style={{ fontSize: 11, color: "var(--g800)", whiteSpace: "pre-wrap", lineHeight: 1.7, margin: 0, fontFamily: "inherit" }}>{selected.content}</pre>
               </div>
-              <div style={{ padding: "10px 16px", borderTop: "1px solid var(--g100)", display: "flex", gap: 8 }}>
+              <div style={{ padding: "10px 16px", borderTop: "1px solid var(--g100)", display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button className="btn btn-ghost btn-sm" onClick={() => { const b = new Blob([selected.content], { type: "text/markdown" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = selected.filename; a.click(); URL.revokeObjectURL(u) }}>Download</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard.writeText(selected.content)}>Copy</button>
+                <button className="btn btn-ghost btn-sm" onClick={handleEmail}>Email</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setPushModal(true); setPushStatus(null) }}>Push to repo</button>
               </div>
             </div>
           )}
+        </div>
+      )}
+      {pushModal && selected && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div className="card" style={{ width: 420, padding: 24 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16 }}>Push to GitHub repo</div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: "var(--g500)", display: "block", marginBottom: 4 }}>Repository (owner/repo)</label>
+              <input className="input" placeholder="e.g. acme/my-repo" value={ghRepo} onChange={e => setGhRepo(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, color: "var(--g500)", display: "block", marginBottom: 4 }}>GitHub personal access token</label>
+              <input className="input" type="password" placeholder="ghp_..." value={ghToken} onChange={e => setGhToken(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            {pushStatus && (
+              <div style={{ marginBottom: 12, fontSize: 12, color: pushStatus === "success" ? "var(--grn)" : "var(--red)" }}>
+                {pushStatus === "success" ? `✓ Pushed to ${ghRepo}/docs/.../${selected.filename}` : `Error: ${pushStatus}`}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setPushModal(false); setGhToken(""); setGhRepo("") }}>Cancel</button>
+              <button className="btn btn-org btn-sm" onClick={handlePush} disabled={pushing || !ghToken || !ghRepo}>{pushing ? "Pushing..." : "Push"}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
