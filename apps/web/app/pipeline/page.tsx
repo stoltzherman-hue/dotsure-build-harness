@@ -54,7 +54,7 @@ function PipelineInner() {
   const { profile } = useAuth()
   const supabase = createClient()
   const bottomRef = useRef<HTMLDivElement>(null)
-  const [apiKey, setApiKey] = useState("")
+  const [apiKey, setApiKey] = useState(() => typeof window !== "undefined" ? localStorage.getItem("anthropic_api_key") || "" : "")
   const [showKeyInput, setShowKeyInput] = useState(false)
   const [userInput, setUserInput] = useState("")
   const [interjectInput, setInterjectInput] = useState("")
@@ -559,7 +559,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
           <div className="card-body">
             <div style={{ fontSize: 12, color: "var(--g700)", marginBottom: 10 }}>Powers the 3 AI agents. Used in-browser only, never stored.</div>
             <div style={{ display: "flex", gap: 8 }}>
-              <input className="form-input" type="password" placeholder="sk-ant-..." value={apiKey} onChange={e => setApiKey(e.target.value)} style={{ flex: 1, margin: 0 }} />
+              <input className="form-input" type="password" placeholder="sk-ant-..." value={apiKey} onChange={e => { setApiKey(e.target.value); localStorage.setItem("anthropic_api_key", e.target.value) }} style={{ flex: 1, margin: 0 }} />
               <button className="btn btn-org" disabled={!apiKey} onClick={() => { setShowKeyInput(false); if (userInput) startPipeline() }}>Start</button>
             </div>
           </div>
