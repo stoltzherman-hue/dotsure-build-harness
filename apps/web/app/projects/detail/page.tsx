@@ -3,6 +3,8 @@ import { useEffect, useState, Suspense } from "react"
 import { createClient } from "@/lib/supabase"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import DependencyPanel from "@/components/dependencies/DependencyPanel"
+import { RequestApprovalButton } from "@/components/approvals/RequestApprovalButton"
 
 interface Project {
   id: string; projectCode: string; name: string; projectType: string
@@ -304,6 +306,10 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
           )}
         </div>
       )}
+      <DependencyPanel projectId={id} />
+      <div style={{ marginTop: 16 }}>
+        <RequestApprovalButton projectId={id} projectName={project.name} currentStatus={project.status} />
+      </div>
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
