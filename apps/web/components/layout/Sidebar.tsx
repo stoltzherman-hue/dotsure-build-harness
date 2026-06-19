@@ -1,6 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/contexts/AuthContext"
 
 const nav = [
   { section: "Overview", items: [{ href: "/", label: "Dashboard", d: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" }]},
@@ -28,6 +29,10 @@ const nav = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { profile, signOut } = useAuth()
+  const initials = profile?.full_name?.split(" ").map(n => n[0]).join("").toUpperCase() || "?"
+  const roleLabel = profile?.role === "GM" ? "General Manager" : profile?.role === "APPROVER" ? "Approver" : "Developer"
+
   return (
     <div className="sidebar">
       <div className="sb-logo">
@@ -50,9 +55,17 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-      <div className="sb-user">
-        <div className="sb-av">HS</div>
-        <div><div className="sb-un">Herman Stoltz</div><div className="sb-ur">General Manager</div></div>
+      <div className="sb-user" style={{ cursor: "default" }}>
+        <div className="sb-av">{initials}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="sb-un">{profile?.full_name || profile?.email || "User"}</div>
+          <div className="sb-ur">{roleLabel}</div>
+        </div>
+        <button onClick={signOut} title="Sign out" style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--g400)", flexShrink: 0 }}>
+          <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: "currentColor", fill: "none", strokeWidth: 2, strokeLinecap: "round" }}>
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+        </button>
       </div>
     </div>
   )
