@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/AuthContext"
 import { Sidebar } from "./Sidebar"
 import { Concierge } from "@/components/Concierge"
+import { NotificationBell } from "@/components/notifications/NotificationBell"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -25,7 +26,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app">
       <Sidebar />
-      <div className="main">{children}</div>
+      <div className="main">
+        <div
+          style={{
+            position: "fixed",
+            top: 12,
+            right: 16,
+            zIndex: 100,
+          }}
+        >
+          <NotificationBell />
+        </div>
+        {children}
+      </div>
       <Concierge />
     </div>
   )
