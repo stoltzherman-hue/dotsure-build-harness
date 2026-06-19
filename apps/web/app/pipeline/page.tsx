@@ -92,7 +92,7 @@ NON-NEGOTIABLE AGENT CONTROLS (from ARC Harness Engineering governance):
     setUserInput("")
     setState(s => ({ ...s, stage: "SCOPING", messages: [{ role: "user", content: prompt, timestamp: new Date().toISOString() }] }))
     setStreaming(true)
-    const { data: session } = await supabase.from("PipelineSession").insert({ stage: "SCOPING", userPrompt: prompt, status: "RUNNING", agentHistory: {} }).select().single()
+    let session: any = null; try { const { data: s } = await supabase.from("PipelineSession").insert({ stage: "SCOPING", userPrompt: prompt, status: "RUNNING", agentHistory: {} }).select().single(); session = s } catch {}
     setState(s => ({ ...s, sessionId: session?.id || null }))
     await runAgent1(prompt, session?.id || null)
   }
@@ -128,7 +128,7 @@ Be conversational and thorough. Show your reasoning. Think out loud.`
         setState(s => ({ ...s, stage: "AWAITING_USER_SCOPE" }))
         addMessage("system", "Agent 1 has a question. Answer below to continue.")
       }
-      if (sessionId) await supabase.from("PipelineSession").update({ stage: "AWAITING_USER_SCOPE", status: "AWAITING_USER" }).eq("id", sessionId)
+      if (sessionId) try { await supabase.from("PipelineSession").update({ stage: "AWAITING_USER_SCOPE", status: "AWAITING_USER" }).eq("id", sessionId)
     } catch (e: any) { addMessage("system", `Error: ${e.message}`) }
     setStreaming(false)
   }
@@ -170,7 +170,7 @@ You MUST always end your response with the following section, even if you have q
         setState(s => ({ ...s, stage: "AWAITING_USER_ARCH" }))
         addMessage("system", "Agent 2 has a question. Answer below to continue.")
       }
-      if (state.sessionId) await supabase.from("PipelineSession").update({ stage: "AWAITING_USER_ARCH", status: "AWAITING_USER" }).eq("id", state.sessionId)
+      try { if (state.sessionId) await supabase.from("PipelineSession").update({ stage: "AWAITING_USER_ARCH", status: "AWAITING_USER" }).eq("id", state.sessionId) } catch {}
     } catch (e: any) { addMessage("system", `Error: ${e.message}`) }
     setStreaming(false)
   }
@@ -212,7 +212,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
       }
       setState(s => ({ ...s, governanceMd, stage: "COMPLETE" }))
       addMessage("system", "All 3 agents complete. Review documents and register the project.")
-      if (state.sessionId) await supabase.from("PipelineSession").update({ stage: "COMPLETE", status: "COMPLETE" }).eq("id", state.sessionId)
+      try { if (state.sessionId) await supabase.from("PipelineSession").update({ stage: "COMPLETE", status: "COMPLETE" }).eq("id", state.sessionId) } catch {}
     } catch (e: any) { addMessage("system", `Error: ${e.message}`) }
     setStreaming(false)
   }
@@ -293,7 +293,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         await supabase.from("ProjectDocument").insert({ projectId: project.id, ...doc, version: 1 })
       }
 
-      if (state.sessionId) await supabase.from("PipelineSession").update({ projectId: project.id, status: "COMPLETE" }).eq("id", state.sessionId)
+      try { try { if (state.sessionId) await supabase.from("PipelineSession").update({ projectId: project.id, status: "COMPLETE" }).eq("id", state.sessionId) } catch {} } catch {}
       setState(s => ({ ...s, projectId: project.id }))
       addMessage("system", `${projectCode} registered. ${docs.length} documents saved to library. Redirecting...`)
       setTimeout(() => { window.location.href = `/projects/detail?id=${project.id}` }, 2000)
@@ -482,6 +482,9 @@ export default function PipelinePage() {
     </Suspense>
   )
 }
+
+
+
 
 
 
