@@ -133,7 +133,7 @@ Be conversational and thorough. Show your reasoning. Think out loud.`
     setStreaming(false)
   }
 
-  const runAgent2 = async () => {
+  const runAgent2 = async (productContent?: string) => {
     setStreaming(true)
     setState(s => ({ ...s, stage: "ARCHITECTING" }))
     addMessage("system", "Agent 2 - Tech Architect is designing your solution...")
@@ -161,7 +161,7 @@ You MUST always end your response with the following section, even if you have q
 ## READY FOR TECHSTACK.MD
 [full markdown document]`
     try {
-      const text = await streamClaude(`Here is product.md:\n\n${state.productMd}\n\nArchitect the technical solution.`, system, appendToLastAgent)
+      const text = await streamClaude(`Here is the product requirements:\n\n${productContent || state.productMd}\n\nArchitect the technical solution based on these requirements.`, system, appendToLastAgent)
       if (text.includes("READY FOR TECHSTACK.MD")) {
         const md = text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || text
         setState(s => ({ ...s, techstackMd: md, stage: "AWAITING_USER_ARCH" }))
@@ -225,7 +225,12 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
     const isApprove = ["approve", "yes", "looks good", "proceed", "ok", "continue", "lgtm"].some(w => msg.toLowerCase().includes(w))
 
     if (state.stage === "AWAITING_USER_SCOPE") {
-      if (isApprove) { await runAgent2() } else {
+      if (isApprove) {
+        // If productMd wasn't captured via marker, use the full agent 1 output as fallback
+        const agent1Text = state.productMd || state.messages.filter(m => m.role === "agent").slice(-1)[0]?.content || ""
+        if (!state.productMd) setState(s => ({ ...s, productMd: agent1Text }))
+        await runAgent2(agent1Text)
+      } else {
         setStreaming(true)
         setState(s => ({ ...s, stage: "SCOPING" }))
         pushAgentMsg()
@@ -477,6 +482,10 @@ export default function PipelinePage() {
     </Suspense>
   )
 }
+
+
+
+
 
 
 
