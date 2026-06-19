@@ -1,6 +1,4 @@
 "use client"
-export const dynamic = "force-dynamic"
-export const fetchCache = "force-no-store"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
 import Link from "next/link"
@@ -18,15 +16,23 @@ export default function Library() {
   const [docs, setDocs] = useState<Doc[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Doc | null>(null)
   const [filter, setFilter] = useState("ALL")
-  const supabase = createClient()
 
   useEffect(() => {
+    const supabase = createClient()
     Promise.all([
       supabase.from("ProjectDocument").select("*").order("createdAt", { ascending: false }),
       supabase.from("Project").select("id,projectCode,name,status")
-    ]).then(([{ data: d }, { data: p }]) => { setDocs(d || []); setProjects(p || []); setLoading(false) })
+    ]).then(([{ data: d, error: e1 }, { data: p, error: e2 }]) => {
+      if (e1 || e2) {
+        setError((e1 || e2)?.message || "Failed to load")
+      }
+      setDocs(d || [])
+      setProjects(p || [])
+      setLoading(false)
+    })
   }, [])
 
   const getProject = (id: string) => projects.find(p => p.id === id)
@@ -46,7 +52,9 @@ export default function Library() {
         ))}
       </div>
 
-      {loading ? <div className="empty">Loading...</div> : Object.keys(grouped).length === 0 ? (
+      {loading ? <div className="empty">Loading...</div> : error ? (
+        <div className="card"><div className="card-body"><div className="empty" style={{ color: "var(--red)" }}>Error: {error}</div></div></div>
+      ) : Object.keys(grouped).length === 0 ? (
         <div className="card"><div className="card-body"><div className="empty"><div style={{ marginBottom: 12 }}>No documents yet. Start a pipeline to generate your first project documents.</div><Link href="/pipeline"><button className="btn btn-org">Start pipeline</button></Link></div></div></div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr 1.4fr" : "1fr", gap: 16, alignItems: "start" }}>
