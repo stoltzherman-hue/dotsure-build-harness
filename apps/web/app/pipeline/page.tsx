@@ -133,7 +133,7 @@ Be conversational and thorough. Show your reasoning. Think out loud.`
     setStreaming(false)
   }
 
-  const runAgent2 = async (productContent?: string) => {
+  const runAgent2 = async (productContent: string = "") => {
     setStreaming(true)
     setState(s => ({ ...s, stage: "ARCHITECTING" }))
     addMessage("system", "Agent 2 - Tech Architect is designing your solution...")
@@ -482,6 +482,7 @@ export default function PipelinePage() {
     </Suspense>
   )
 }
+
 
 
 
