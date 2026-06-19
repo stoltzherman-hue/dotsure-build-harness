@@ -157,7 +157,7 @@ Structure:
 ## Gaps & risks (anything not covered by approved tools)
 ## Assumptions
 ## Self-audit (confidence level, what you would verify)
-Then EITHER ask ONE question OR write:
+You MUST always end your response with the following section, even if you have questions:
 ## READY FOR TECHSTACK.MD
 [full markdown document]`
     try {
@@ -262,7 +262,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
       const year = new Date().getFullYear()
       const { count } = await supabase.from("Project").select("*", { count: "exact", head: true })
       const projectCode = `DOT-${year}-${String((count || 0) + 1).padStart(4, "0")}`
-      const nameMatch = state.productMd.match(/^#\s+(.+)$/m)
+      const nameMatch = state.productMd.match(/^#\s+(.+)$/m) || state.messages[0]?.content?.match(/build\s+(?:a\s+)?(.+?)(?:\s+for|\s+that|\s+which|$)/i)
       const projectName = nameMatch?.[1]?.trim() || "Pipeline Project"
       const riskTier = state.governanceMd.includes("ARC-REQUIRED") ? "HIGH" : state.governanceMd.includes("IT-ASSISTED") ? "MEDIUM" : "LOW"
       const riskScore = riskTier === "HIGH" ? 75 : riskTier === "MEDIUM" ? 45 : 20
@@ -477,3 +477,7 @@ export default function PipelinePage() {
     </Suspense>
   )
 }
+
+
+
+

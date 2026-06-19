@@ -34,6 +34,8 @@ function ProjectDetailInner() {
   const [scaffoldError, setScaffoldError] = useState<string | null>(null)
   const [githubToken, setGithubToken] = useState("")
   const [showTokenInput, setShowTokenInput] = useState(false)
+  const [docs, setDocs] = useState<any[]>([])
+  const [selectedDoc, setSelectedDoc] = useState<any | null>(null)
   const [anthropicKey, setAnthropicKey] = useState("")
   const [showKeyInput, setShowKeyInput] = useState(false)
 
@@ -41,10 +43,12 @@ function ProjectDetailInner() {
     if (!id) return
     Promise.all([
       supabase.from("Project").select("*").eq("id", id).single(),
-      supabase.from("ProjectMockup").select("html,generatedAt").eq("projectId", id).order("generatedAt", { ascending: false }).limit(1).single()
-    ]).then(([{ data: proj }, { data: mockup }]) => {
+      supabase.from("ProjectMockup").select("html,generatedAt").eq("projectId", id).order("generatedAt", { ascending: false }).limit(1).single(),
+      supabase.from("ProjectDocument").select("*").eq("projectId", id).order("createdAt", { ascending: true })
+    ]).then(([{ data: proj }, { data: mockup }, { data: docData }]) => {
       setProject(proj)
       if (mockup) { setMockupHtml(mockup.html); setMockupSavedAt(mockup.generatedAt) }
+      setDocs(docData || [])
       setLoading(false)
     })
   }, [id])
@@ -264,6 +268,42 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
           </div>
         </div>
       )}
+      {docs.length > 0 && (
+        <div className="card">
+          <div className="card-head">
+            <h3>Project documents</h3>
+            <a href="/library" style={{ fontSize: 11, color: "var(--org)", fontWeight: 600 }}>View all in library</a>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: "12px 16px" }}>
+            {["product.md","techstack.md","governance.md","evidence-pack.md"].map(filename => {
+              const doc = docs.find((d: any) => d.filename === filename)
+              const colors: Record<string,string> = { "product.md":"var(--org)", "techstack.md":"var(--grn)", "governance.md":"#7c3aed", "evidence-pack.md":"#7c3aed" }
+              const color = colors[filename] || "var(--g500)"
+              return (
+                <div key={filename} onClick={() => doc && setSelectedDoc(selectedDoc?.id === doc.id ? null : doc)}
+                  style={{ border: `1px solid ${doc ? (selectedDoc?.id === doc.id ? color : "var(--g200)") : "var(--g100)"}`, borderRadius: 8, padding: "10px 12px", cursor: doc ? "pointer" : "default", opacity: doc ? 1 : 0.4, transition: "all 0.15s" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: doc ? color : "var(--g300)", marginBottom: 4 }}>{filename}</div>
+                  {doc ? <div style={{ fontSize: 9, color: "var(--grn)", fontWeight: 700 }}>{new Date(doc.createdAt).toLocaleDateString("en-ZA")}</div>
+                    : <div style={{ fontSize: 9, color: "var(--g300)" }}>Not generated</div>}
+                </div>
+              )
+            })}
+          </div>
+          {selectedDoc && (
+            <div style={{ borderTop: "1px solid var(--g100)", padding: "12px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--g900)" }}>{selectedDoc.filename}</span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { const b = new Blob([selectedDoc.content], { type: "text/markdown" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = selectedDoc.filename; a.click(); URL.revokeObjectURL(u) }}>Download</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard.writeText(selectedDoc.content)}>Copy</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setSelectedDoc(null)}>Close</button>
+                </div>
+              </div>
+              <pre style={{ fontSize: 11, color: "var(--g800)", whiteSpace: "pre-wrap", lineHeight: 1.7, maxHeight: 400, overflowY: "auto", margin: 0, fontFamily: "inherit" }}>{selectedDoc.content}</pre>
+            </div>
+          )}
+        </div>
+      )}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -276,3 +316,5 @@ export default function ProjectDetailPage() {
     </Suspense>
   )
 }
+
+
