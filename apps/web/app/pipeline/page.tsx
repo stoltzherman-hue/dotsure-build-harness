@@ -1181,6 +1181,25 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         )
       })()}
 
+      {/* ARC-REQUIRED hard block */}
+      {state.stage === "COMPLETE" && computeScorecard(state.productMd, state.techstackMd, state.governanceMd).arcRequired && (
+        <div style={{ border: "2px solid #dc2626", borderRadius: 12, padding: "20px 24px", background: "#fef2f2", display: "flex", gap: 16, alignItems: "flex-start" }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, stroke: "white", fill: "none", strokeWidth: 2.5, strokeLinecap: "round" }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#991b1b", marginBottom: 4 }}>BUILD BLOCKED — ARC APPROVAL REQUIRED</div>
+            <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6, marginBottom: 12 }}>
+              This project has been classified as <strong>CRITICAL risk</strong>. No build activity may proceed until the Architecture Review Committee (ARC) approves it. An approval request has been automatically submitted to your GM.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Link href="/approvals"><button className="btn btn-sm" style={{ background: "#dc2626", color: "white", border: "none", fontSize: 11, fontWeight: 700 }}>View approval status →</button></Link>
+              <Link href="/risk"><button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>Risk dashboard</button></Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
     </div>
   )
