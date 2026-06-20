@@ -38,6 +38,7 @@ function ProjectDetailInner() {
   const [showTokenInput, setShowTokenInput] = useState(false)
   const [docs, setDocs] = useState<any[]>([])
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null)
+  const [similarProjects, setSimilarProjects] = useState<Project[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -50,6 +51,14 @@ function ProjectDetailInner() {
       if (mockup) { setMockupHtml(mockup.html); setMockupSavedAt(mockup.generatedAt) }
       setDocs(docData || [])
       setLoading(false)
+      if (proj) {
+        supabase.from("Project").select("id,projectCode,name,riskTier,riskScore,department,status,projectType")
+          .neq("id", id)
+          .or(`department.eq.${proj.department},riskTier.eq.${proj.riskTier}`)
+          .order("createdAt", { ascending: false })
+          .limit(5)
+          .then(({ data: similar }) => setSimilarProjects((similar as Project[]) || []))
+      }
     })
   }, [id])
 
@@ -206,6 +215,47 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
           )}
         </div>
       </div>
+
+      {similarProjects.length > 0 && (
+        <div className="card">
+          <div className="card-head"><h3>Benchmark — similar projects</h3><span style={{ fontSize: 11, color: "var(--g500)" }}>Same department or risk tier</span></div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "var(--g50)", borderBottom: "1px solid var(--g100)" }}>
+                  {["Project", "Department", "Type", "Risk tier", "Risk score", "Status"].map(h => (
+                    <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--g600)", fontSize: 11 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom: "2px solid var(--org)", background: "#fff8f0" }}>
+                  <td style={{ padding: "8px 12px", fontWeight: 700 }}><span className="proj-id">{project.projectCode}</span> <span style={{ color: "var(--org)" }}>{project.name} ◀ this</span></td>
+                  <td style={{ padding: "8px 12px", color: "var(--g600)" }}>{project.department}</td>
+                  <td style={{ padding: "8px 12px", color: "var(--g600)" }}>{project.projectType}</td>
+                  <td style={{ padding: "8px 12px" }}><span className={"badge " + riskBadgeClass(project.riskTier)}>{project.riskTier}</span></td>
+                  <td style={{ padding: "8px 12px", fontFamily: "monospace", fontWeight: 700, color: riskColor(project.riskTier) }}>{project.riskScore}</td>
+                  <td style={{ padding: "8px 12px" }}><span className={"badge " + statusBadgeClass(project.status)}>{project.status.replace("_", " ")}</span></td>
+                </tr>
+                {similarProjects.map((s, i) => (
+                  <tr key={s.id} style={{ borderBottom: "1px solid var(--g100)", background: i % 2 === 0 ? "white" : "var(--g50)" }}>
+                    <td style={{ padding: "8px 12px" }}>
+                      <Link href={`/projects/detail?id=${s.id}`} style={{ textDecoration: "none" }}>
+                        <span className="proj-id">{s.projectCode}</span> <span style={{ color: "var(--g900)", fontWeight: 600 }}>{s.name}</span>
+                      </Link>
+                    </td>
+                    <td style={{ padding: "8px 12px", color: "var(--g600)" }}>{s.department}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--g600)" }}>{s.projectType}</td>
+                    <td style={{ padding: "8px 12px" }}><span className={"badge " + riskBadgeClass(s.riskTier)}>{s.riskTier}</span></td>
+                    <td style={{ padding: "8px 12px", fontFamily: "monospace", fontWeight: 700, color: riskColor(s.riskTier) }}>{s.riskScore}</td>
+                    <td style={{ padding: "8px 12px" }}><span className={"badge " + statusBadgeClass(s.status)}>{s.status.replace("_", " ")}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {mockupError && (
         <div style={{ background: "#fff0f0", border: "1px solid var(--red)", borderRadius: 8, padding: "12px 16px", fontSize: 12, color: "var(--red)" }}>
