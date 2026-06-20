@@ -38,8 +38,6 @@ function ProjectDetailInner() {
   const [showTokenInput, setShowTokenInput] = useState(false)
   const [docs, setDocs] = useState<any[]>([])
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null)
-  const [anthropicKey, setAnthropicKey] = useState("")
-  const [showKeyInput, setShowKeyInput] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -67,7 +65,6 @@ function ProjectDetailInner() {
 
   const generateMockup = async () => {
     if (!project) return
-    if (!anthropicKey) { setShowKeyInput(true); return }
     setGenerating(true)
     setMockupError(null)
     try {
@@ -95,9 +92,9 @@ REQUIREMENTS:
 
 CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Start with <!DOCTYPE html>.`
 
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/concierge", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 8000, messages: [{ role: "user", content: prompt }] }),
       })
       if (!res.ok) { setMockupError(`Claude API error: ${res.status}`); setGenerating(false); return }
@@ -172,20 +169,6 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
           }
         </button>
       </div>
-
-      {showKeyInput && (
-        <div className="card">
-          <div className="card-head"><h3>Anthropic API key required</h3></div>
-          <div className="card-body">
-            <div style={{ fontSize: 12, color: "var(--g700)", marginBottom: 10 }}>Used in-browser only. Never stored.</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="form-input" type="password" placeholder="sk-ant-..." value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} style={{ flex: 1, margin: 0 }} />
-              <button className="btn btn-org" onClick={() => { setShowKeyInput(false); setTimeout(generateMockup, 50) }} disabled={!anthropicKey}>Generate</button>
-              <button className="btn btn-ghost" onClick={() => setShowKeyInput(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="two-col">
         <div className="card">

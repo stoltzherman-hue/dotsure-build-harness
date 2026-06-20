@@ -22,9 +22,6 @@ export default function Compliance() {
   const [assessments, setAssessments] = useState<Assessment[]>([])
   const [loading, setLoading] = useState(true)
   const [assessing, setAssessing] = useState<string|null>(null)
-  const [anthropicKey, setAnthropicKey] = useState("")
-  const [showKeyPrompt, setShowKeyPrompt] = useState(false)
-  const [pendingProjectId, setPendingProjectId] = useState<string|null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -34,7 +31,7 @@ export default function Compliance() {
     ]).then(([{ data: p }, { data: a }]) => { setProjects(p || []); setAssessments(a || []); setLoading(false) })
   }, [])
 
-  const runAssessment = async (projectId: string, apiKey: string) => {
+  const runAssessment = async (projectId: string) => {
     setAssessing(projectId)
     const project = projects.find(p => p.id === projectId)
     if (!project) { setAssessing(null); return }
@@ -54,9 +51,9 @@ Score each domain 0-100. Higher risk projects and AI/customer-facing projects sh
 Return ONLY this JSON (no markdown, no backticks):
 {"popiaScore":<0-100>,"faisScore":<0-100>,"pprTcfScore":<0-100>,"insuranceActScore":<0-100>,"aiGovernanceScore":<0-100>,"cloudScore":<0-100>,"dataResidencyScore":<0-100>,"outsourcingScore":<0-100>,"findings":"<2-3 sentence plain English summary of key compliance risks and recommendations for this specific project>"}`
 
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/concierge", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, messages: [{ role: "user", content: prompt }] }),
       })
       if (!res.ok) { setAssessing(null); return }
@@ -81,8 +78,7 @@ Return ONLY this JSON (no markdown, no backticks):
   }
 
   const handleAssess = (projectId: string) => {
-    if (!anthropicKey) { setPendingProjectId(projectId); setShowKeyPrompt(true); return }
-    runAssessment(projectId, anthropicKey)
+    runAssessment(projectId)
   }
 
   const getLatest = (projectId: string) => assessments.find(a => a.projectId === projectId)
@@ -94,21 +90,7 @@ Return ONLY this JSON (no markdown, no backticks):
         <div><h1>Compliance assessments</h1><p>SA insurance regulatory framework - 8 domains, AI-powered assessment</p></div>
       </div>
 
-      {showKeyPrompt && (
-        <div className="card">
-          <div className="card-head"><h3>Anthropic API key required</h3></div>
-          <div className="card-body">
-            <div style={{ fontSize: 12, color: "var(--g700)", marginBottom: 10 }}>Claude analyses each project against SA regulations. Key used in-browser only, never stored.</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="form-input" type="password" placeholder="sk-ant-..." value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} style={{ flex: 1, margin: 0 }} />
-              <button className="btn btn-org" disabled={!anthropicKey} onClick={() => { setShowKeyPrompt(false); if (pendingProjectId) runAssessment(pendingProjectId, anthropicKey) }}>Run assessment</button>
-              <button className="btn btn-ghost" onClick={() => setShowKeyPrompt(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {loading ? <div className="empty">Loading...</div> : projects.length === 0 ? (
+{loading ? <div className="empty">Loading...</div> : projects.length === 0 ? (
         <div className="card"><div className="card-body"><div className="empty">Register a project first to run compliance assessments</div></div></div>
       ) : projects.map(p => {
         const a = getLatest(p.id)
