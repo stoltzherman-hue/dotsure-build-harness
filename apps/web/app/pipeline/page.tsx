@@ -449,8 +449,8 @@ Structure:
       const projectCode = `DOT-${year}-${String((count || 0) + 1).padStart(4, "0")}`
       const nameMatch = productMd.match(/^#\s+(.+)$/m)
       const projectName = nameMatch?.[1]?.trim() || prompt.slice(0, 60) || "AI Pipeline Project"
-      const riskTier = governanceMd.includes("ARC-REQUIRED") ? "HIGH" : governanceMd.includes("IT-ASSISTED") ? "MEDIUM" : "LOW"
-      const riskScore = riskTier === "HIGH" ? 75 : riskTier === "MEDIUM" ? 45 : 20
+      const riskTier = governanceMd.includes("CRITICAL") ? "CRITICAL" : governanceMd.includes("ARC-REQUIRED") || governanceMd.includes("HIGH") ? "HIGH" : governanceMd.includes("IT-ASSISTED") || governanceMd.includes("MEDIUM") ? "MEDIUM" : "LOW"
+      const riskScore = riskTier === "CRITICAL" ? 90 : riskTier === "HIGH" ? 75 : riskTier === "MEDIUM" ? 45 : 20
 
       const { data: project } = await sb.from("Project").insert({
         projectCode, name: projectName, projectType: "AI application", department: "Technology",
@@ -479,7 +479,7 @@ Structure:
           notes: `Auto-submitted by AI pipeline agent. Risk tier: ${riskTier}. Project code: ${projectCode}.`,
         })
 
-        const { data: gms } = await sb.from("UserProfile").select("id").eq("role", "GM")
+        const { data: gms } = await sb.from("UserProfile").select("id, email").eq("role", "GM")
         if (gms?.length) {
           await sb.from("Notification").insert(
             gms.map((gm: any) => ({
@@ -490,6 +490,36 @@ Structure:
               link: `/approvals`,
             }))
           )
+          const gmEmails = gms.map((gm: any) => gm.email).filter(Boolean)
+          if (gmEmails.length) {
+            const isCritical = riskTier === "CRITICAL"
+            await fetch("/api/notify-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: gmEmails,
+                subject: `${isCritical ? "🚨 CRITICAL — " : ""}Approval required: ${projectCode} ${projectName}`,
+                html: `
+                  <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
+                    <div style="background:#e86c00;color:white;padding:16px 20px;border-radius:8px 8px 0 0;font-weight:700;font-size:18px">
+                      Dotsure Build Harness
+                    </div>
+                    <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:24px">
+                      ${isCritical ? `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:12px 16px;margin-bottom:16px;color:#991b1b;font-weight:700">⚠ CRITICAL RISK — ARC approval required before any build activity</div>` : ""}
+                      <p style="margin:0 0 8px;color:#111827;font-size:15px">A new AI project requires your approval.</p>
+                      <table style="width:100%;border-collapse:collapse;margin:16px 0">
+                        <tr><td style="padding:8px 0;color:#6b7280;font-size:13px;width:120px">Project</td><td style="padding:8px 0;font-weight:600;color:#111827;font-size:13px">${projectCode} — ${projectName}</td></tr>
+                        <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Risk tier</td><td style="padding:8px 0;font-weight:700;color:${isCritical ? "#dc2626" : "#92400e"};font-size:13px">${riskTier}</td></tr>
+                      </table>
+                      <a href="https://dotsure-build-harness.vercel.app/approvals" style="display:inline-block;background:#e86c00;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:700;font-size:13px;margin-top:8px">
+                        Review &amp; approve →
+                      </a>
+                      <p style="margin:20px 0 0;font-size:11px;color:#9ca3af">Sent automatically by the Dotsure AI Build Harness pipeline.</p>
+                    </div>
+                  </div>`,
+              }),
+            }).catch(() => {}) // non-blocking
+          }
         }
       }
 
