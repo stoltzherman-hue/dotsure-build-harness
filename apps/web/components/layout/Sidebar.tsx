@@ -21,9 +21,11 @@ const nav = [
     { href: "/compliance", label: "Compliance", d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
     { href: "/deployments", label: "Deployments", d: "M5 12h14M12 5l7 7-7 7" },
     { href: "/risk", label: "Risk dashboard", d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM12 8v4M12 16h.01" },
+    { href: "/frameworks", label: "AI frameworks", d: "M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" },
   ]},
   { section: "Finance", items: [{ href: "/finops", label: "FinOps", d: "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" }]},
   { section: "Operations", items: [
+    { href: "/observability", label: "LLM observability", d: "M2 12h4l3-9 4 18 3-9h4" },
     { href: "/memory", label: "Knowledge base", d: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 16v-4M12 8h.01" },
     { href: "/debug", label: "Debug log", d: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" },
   ]},
