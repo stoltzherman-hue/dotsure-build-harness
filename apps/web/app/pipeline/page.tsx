@@ -38,9 +38,9 @@ const INJECTION_PATTERNS = [
 ]
 
 const OUTPUT_SCAN_PATTERNS = [
-  { re: /\b(exec|eval|system|rm -rf|DROP TABLE|DELETE FROM)\b/i, reason: "Potential code injection in output" },
+  { re: /\b(eval\s*\(|system\s*\(|rm\s+-rf|DROP\s+TABLE|DELETE\s+FROM)/i, reason: "Potential code injection in output" },
   { re: /as an ai (language model|assistant), i (cannot|will not)/i, reason: "Agent broke character / refusal loop" },
-  { re: /\b(password|api.?key|secret|token)\s*[:=]\s*\S+/i, reason: "Possible credential leakage in output" },
+  { re: /\b(password|api.?key|secret|token)\s*[:=]\s*["']?\w{8,}/i, reason: "Possible credential leakage in output" },
 ]
 
 const LIFECYCLE_STAGES = [
@@ -108,6 +108,7 @@ function PipelineInner() {
   const [showLifecycle, setShowLifecycle] = useState(false)
   const [guardrailWarning, setGuardrailWarning] = useState<string | null>(null)
   const [sessionRunCost, setSessionRunCost] = useState(0)
+  const [showMemoryPrompt, setShowMemoryPrompt] = useState(false)
   const [state, setState] = useState<AgentState>({
     stage: "IDLE", messages: [], productMd: "", techstackMd: "", governanceMd: "", sessionId: null, projectId: null
   })
@@ -489,6 +490,7 @@ Structure:
       setState(s => ({ ...s, projectId: project.id }))
       appendAutoLog(`✓ ${projectCode} registered — approval request submitted to GM`)
       setAutoStatus("done")
+      setShowMemoryPrompt(true)
     } catch (e: any) {
       appendAutoLog(`✗ Save error: ${e.message}`)
       setAutoStatus("idle")
@@ -1001,6 +1003,17 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                   <a href="/approvals"><button className="btn btn-ghost" style={{ fontSize: 12 }}>View approvals</button></a>
                   <a href="/observability"><button className="btn btn-ghost" style={{ fontSize: 12 }}>View observability</button></a>
                 </div>
+              </div>
+            )}
+            {showMemoryPrompt && (
+              <div style={{ marginTop: 12, padding: "12px 16px", background: "#faf5ff", borderRadius: 10, border: "1px solid #e9d5ff", display: "flex", alignItems: "center", gap: 12 }}>
+                <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: "#7c3aed", fill: "none", strokeWidth: 2, flexShrink: 0 }}><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 6v4l3 3" strokeLinecap="round"/></svg>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed" }}>Save a lesson to the knowledge base?</div>
+                  <div style={{ fontSize: 11, color: "#6d28d9", marginTop: 2 }}>Capture patterns, decisions or risks from this run so future agents can learn from them.</div>
+                </div>
+                <a href="/memory"><button className="btn btn-ghost" style={{ fontSize: 11, borderColor: "#c4b5fd", color: "#7c3aed" }}>Save lesson</button></a>
+                <button onClick={() => setShowMemoryPrompt(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#a78bfa", fontSize: 16 }}>×</button>
               </div>
             )}
           </div>
