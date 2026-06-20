@@ -102,9 +102,9 @@ function PipelineInner() {
   const appendAutoLog = (msg: string) => setAutoLog(l => [...l, msg])
 
   const streamClaude = async (prompt: string, systemPrompt: string, onChunk: (c: string) => void, history: { role: string; content: string }[] = [], model = "claude-sonnet-4-6") => {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("/api/concierge", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      headers: { "Content-Type": "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({ model, max_tokens: 4000, system: systemPrompt, messages: [...history, { role: "user", content: prompt }], stream: true }),
     })
     if (!res.ok) throw new Error(`Claude API error: ${res.status}`)
