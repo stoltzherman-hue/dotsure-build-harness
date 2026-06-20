@@ -98,8 +98,6 @@ function PipelineInner() {
   const { profile } = useAuth()
   const supabase = createClient()
   const bottomRef = useRef<HTMLDivElement>(null)
-  const [apiKey, setApiKey] = useState(() => typeof window !== "undefined" ? localStorage.getItem("anthropic_api_key") || "" : "")
-  const [showKeyInput, setShowKeyInput] = useState(false)
   const [userInput, setUserInput] = useState("")
   const [interjectInput, setInterjectInput] = useState("")
   const [streaming, setStreaming] = useState(false)
@@ -188,9 +186,9 @@ function PipelineInner() {
     model = "claude-sonnet-4-6"
   ): Promise<{ text: string; inputTokens: number; outputTokens: number; latencyMs: number }> => {
     const t0 = Date.now()
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("/api/concierge", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model, max_tokens: 4000, system: systemPrompt, messages: [...history, { role: "user", content: prompt }], stream: true }),
     })
     if (!res.ok) throw new Error(`Claude API error: ${res.status}`)
@@ -250,7 +248,6 @@ NON-NEGOTIABLE AGENT CONTROLS (from ARC Harness Engineering governance):
 
   const startPipeline = async () => {
     if (!userInput.trim()) return
-    if (!apiKey) { setShowKeyInput(true); return }
     const prompt = userInput
 
     const flag = checkGuardrails(prompt)
@@ -753,18 +750,6 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         </div>
       )}
 
-      {showKeyInput && (
-        <div className="card">
-          <div className="card-head"><h3>Anthropic API key required</h3></div>
-          <div className="card-body">
-            <div style={{ fontSize: 12, color: "var(--g700)", marginBottom: 10 }}>Powers the 3 AI agents. Used in-browser only, never stored.</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="form-input" type="password" placeholder="sk-ant-..." value={apiKey} onChange={e => { setApiKey(e.target.value); localStorage.setItem("anthropic_api_key", e.target.value) }} style={{ flex: 1, margin: 0 }} />
-              <button className="btn btn-org" disabled={!apiKey} onClick={() => { setShowKeyInput(false); if (userInput) startPipeline() }}>Start</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Lifecycle checklist */}
       {state.stage === "IDLE" && (() => {
