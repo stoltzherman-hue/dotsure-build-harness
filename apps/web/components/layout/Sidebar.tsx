@@ -26,6 +26,7 @@ const nav = [
   { section: "Finance", items: [{ href: "/finops", label: "FinOps", d: "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" }]},
   { section: "Operations", items: [
     { href: "/observability", label: "LLM observability", d: "M2 12h4l3-9 4 18 3-9h4" },
+    { href: "/models", label: "Model inventory", d: "M12 2a2 2 0 012 2v1a2 2 0 01-2 2 2 2 0 01-2-2V4a2 2 0 012-2zM12 17a2 2 0 012 2v1a2 2 0 01-2 2 2 2 0 01-2-2v-1a2 2 0 012-2zM4.22 4.22a2 2 0 012.83 0l.7.7a2 2 0 010 2.83 2 2 0 01-2.83 0l-.7-.7a2 2 0 010-2.83zM16.24 16.24a2 2 0 012.83 0l.7.7a2 2 0 010 2.83 2 2 0 01-2.83 0l-.7-.7a2 2 0 010-2.83zM2 12h1M21 12h1M4.22 19.78l.7-.7M19.07 4.93l.7-.7" },
     { href: "/memory", label: "Knowledge base", d: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 16v-4M12 8h.01" },
     { href: "/debug", label: "Debug log", d: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" },
   ]},
