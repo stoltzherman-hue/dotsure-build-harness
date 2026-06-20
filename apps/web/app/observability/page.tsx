@@ -13,6 +13,7 @@ interface PipelineRun {
   guardrailFlag: boolean
   flagReason: string | null
   createdAt: string
+  quality: number | null
 }
 
 const MODEL_LABEL: Record<string, string> = {
@@ -24,6 +25,7 @@ export default function ObservabilityPage() {
   const [runs, setRuns] = useState<PipelineRun[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "flagged">("all")
+  const [ratings, setRatings] = useState<Record<string, number>>({})
 
   useEffect(() => {
     const sb = createClient()
@@ -39,6 +41,17 @@ export default function ObservabilityPage() {
   const avgLatency = runs.length ? Math.round(runs.reduce((s, r) => s + (r.latencyMs || 0), 0) / runs.length) : 0
   const flagCount = runs.filter(r => r.guardrailFlag).length
 
+  const rateRun = async (id: string, quality: number) => {
+    setRatings(prev => ({ ...prev, [id]: quality }))
+    const sb = createClient()
+    await sb.from("PipelineRun").update({ quality }).eq("id", id)
+    setRuns(prev => prev.map(r => r.id === id ? { ...r, quality } : r))
+  }
+
+  const ratedRuns = runs.filter(r => r.quality != null || ratings[r.id] != null)
+  const acceptedRuns = ratedRuns.filter(r => (ratings[r.id] ?? r.quality) === 1)
+  const acceptanceRate = ratedRuns.length ? Math.round((acceptedRuns.length / ratedRuns.length) * 100) : null
+
   // Simple inline bar chart — last 20 runs latency
   const chartRuns = [...runs].reverse().slice(-20)
   const maxLatency = Math.max(...chartRuns.map(r => r.latencyMs || 0), 1)
@@ -50,13 +63,14 @@ export default function ObservabilityPage() {
       </div>
 
       {/* KPI strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 4 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 4 }}>
         {[
           { label: "Total runs", value: runs.length.toLocaleString(), color: "var(--g900)" },
           { label: "Total cost", value: `$${totalCost.toFixed(4)}`, color: "var(--grn)" },
           { label: "Tokens in", value: totalIn.toLocaleString(), color: "var(--org)" },
           { label: "Tokens out", value: totalOut.toLocaleString(), color: "#7c3aed" },
           { label: "Guardrail flags", value: flagCount, color: flagCount > 0 ? "#dc2626" : "var(--g400)" },
+          { label: "Acceptance rate", value: acceptanceRate != null ? `${acceptanceRate}%` : "—", color: acceptanceRate == null ? "var(--g400)" : acceptanceRate >= 70 ? "var(--grn)" : acceptanceRate >= 40 ? "var(--amb)" : "#dc2626" },
         ].map(k => (
           <div key={k.label} className="card" style={{ padding: "14px 16px" }}>
             <div style={{ fontSize: 11, color: "var(--g500)", marginBottom: 4 }}>{k.label}</div>
@@ -120,7 +134,7 @@ export default function ObservabilityPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "var(--g50)", borderBottom: "1px solid var(--g100)" }}>
-                  {["Time", "Agent", "Model", "Tokens in", "Tokens out", "Latency", "Cost", "Flag"].map(h => (
+                  {["Time", "Agent", "Model", "Tokens in", "Tokens out", "Latency", "Cost", "Flag", "Quality"].map(h => (
                     <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--g600)", fontSize: 11, whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
@@ -145,6 +159,17 @@ export default function ObservabilityPage() {
                       ) : (
                         <span style={{ fontSize: 10, color: "var(--g300)" }}>—</span>
                       )}
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      {(() => {
+                        const q = ratings[r.id] ?? r.quality
+                        return (
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button onClick={() => rateRun(r.id, 1)} title="Good output" style={{ background: q === 1 ? "#dcfce7" : "transparent", border: "1px solid", borderColor: q === 1 ? "var(--grn)" : "var(--g200)", borderRadius: 4, cursor: "pointer", fontSize: 12, padding: "1px 5px", color: q === 1 ? "var(--grn)" : "var(--g400)" }}>👍</button>
+                            <button onClick={() => rateRun(r.id, -1)} title="Poor output" style={{ background: q === -1 ? "#fef2f2" : "transparent", border: "1px solid", borderColor: q === -1 ? "#dc2626" : "var(--g200)", borderRadius: 4, cursor: "pointer", fontSize: 12, padding: "1px 5px", color: q === -1 ? "#dc2626" : "var(--g400)" }}>👎</button>
+                          </div>
+                        )
+                      })()}
                     </td>
                   </tr>
                 ))}
