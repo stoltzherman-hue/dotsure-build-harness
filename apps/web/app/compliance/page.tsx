@@ -83,6 +83,11 @@ Return ONLY this JSON (no markdown, no backticks):
 
   const getLatest = (projectId: string) => assessments.find(a => a.projectId === projectId)
   const scoreColor = (s: number) => s >= 70 ? "var(--grn)" : s >= 50 ? "var(--amb)" : "var(--red)"
+  const daysUntilExpiry = (a: Assessment) => {
+    if (!(a as any).certificateExpiresAt) return null
+    return Math.ceil((new Date((a as any).certificateExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  }
+  const expiringSoon = assessments.filter(a => { const d = daysUntilExpiry(a); return d !== null && d <= 30 && d >= 0 })
 
   return (
     <div className="content">
@@ -90,7 +95,30 @@ Return ONLY this JSON (no markdown, no backticks):
         <div><h1>Compliance assessments</h1><p>SA insurance regulatory framework - 8 domains, AI-powered assessment</p></div>
       </div>
 
-{loading ? <div className="empty">Loading...</div> : projects.length === 0 ? (
+      {expiringSoon.length > 0 && (
+        <div style={{ background: "#fff8f0", border: "1px solid #fed7aa", borderRadius: 10, padding: "14px 18px", marginBottom: 4, display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, stroke: "#f97316", fill: "none", strokeWidth: 2, flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e", marginBottom: 4 }}>
+              {expiringSoon.length} compliance certificate{expiringSoon.length > 1 ? "s" : ""} expiring within 30 days
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {expiringSoon.map(a => {
+                const p = projects.find(p => p.id === a.projectId)
+                const days = daysUntilExpiry(a)
+                return (
+                  <button key={a.id} onClick={() => handleAssess(a.projectId)} disabled={assessing === a.projectId}
+                    style={{ fontSize: 11, background: "#e86c00", color: "white", border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontWeight: 600 }}>
+                    Re-assess {p?.projectCode} ({days}d left)
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? <div className="empty">Loading...</div> : projects.length === 0 ? (
         <div className="card"><div className="card-body"><div className="empty">Register a project first to run compliance assessments</div></div></div>
       ) : projects.map(p => {
         const a = getLatest(p.id)
@@ -108,6 +136,7 @@ Return ONLY this JSON (no markdown, no backticks):
                     <span style={{ fontSize: 20, fontWeight: 800, color: scoreColor(a.overallScore) }}>{a.overallScore}</span>
                     <span style={{ fontSize: 10, color: "var(--g500)" }}>/100</span>
                     <span className={"badge " + (a.certificateIssued ? "badge-ok" : "badge-fail")}>{a.certificateIssued ? "Certificate issued" : "Below threshold"}</span>
+                    {a.certificateIssued && (() => { const d = daysUntilExpiry(a); return d !== null ? <span style={{ fontSize: 10, color: d <= 30 ? "#f97316" : "var(--g400)", fontWeight: d <= 30 ? 700 : 400 }}>{d <= 30 ? `⚠ ${d}d left` : `Expires in ${d}d`}</span> : null })()}
                   </>
                 ) : <span className="badge badge-pending">Not assessed</span>}
                 <button className={"btn btn-sm " + (a ? "btn-ghost" : "btn-org")} onClick={() => handleAssess(p.id)} disabled={assessing === p.id}>
