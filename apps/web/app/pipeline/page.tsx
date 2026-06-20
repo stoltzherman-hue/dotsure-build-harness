@@ -160,6 +160,18 @@ function PipelineInner() {
     return `\n\n## INSTITUTIONAL KNOWLEDGE\nThe following lessons from previous Dotsure projects are relevant to this prompt:\n${memories.map(m => `[${m.type}] ${m.title}: ${m.content}`).join("\n")}`
   }
 
+  // ─── APPROVED STACK: load from Technology table ──────────────────────────
+
+  const loadApprovedStack = async (): Promise<string> => {
+    try {
+      const { data } = await supabase.from("Technology").select("name, category, description").eq("lifecycleStatus", "Approved")
+      if (!data || data.length === 0) throw new Error("empty")
+      return data.map((t: any) => `- ${t.name} (${t.category})${t.description ? " - " + t.description.split(".")[0] : ""}`).join("\n")
+    } catch {
+      return "- Next.js (Dev platform)\n- Payload CMS (CMS)\n- Supabase (Database)\n- Vercel (Dev platform)\n- GitHub (Dev platform)\n- Claude Code (AI tooling)"
+    }
+  }
+
   // ─── OBSERVABILITY: log PipelineRun ──────────────────────────────────────
 
   const logPipelineRun = async (opts: {
@@ -338,16 +350,12 @@ Always end with the READY FOR PRODUCT.MD section with the full document.`
     appendAutoLog("Agent 2 - Tech Architect starting...")
     pushAgentMsg()
     setState(s => ({ ...s, stage: "ARCHITECTING" }))
+    const approvedStack2auto = await loadApprovedStack()
     const system2 = `You are Agent 2 - Tech Architect for the Dotsure AI Build Harness.
 ${GUARDRAILS}${memBlock}
 
 APPROVED STACK AT DOTSURE:
-- Next.js (Frontend) - React framework
-- Payload CMS (CMS) - Headless CMS
-- Supabase (Database) - PostgreSQL platform
-- Vercel (Hosting) - Frontend cloud
-- GitHub (Source Control) - Version control
-- Claude Code (AI Development) - Agentic coding
+${approvedStack2auto}
 
 Your job: read product.md, propose optimal stack from approved tools, justify each choice, flag gaps, self-audit.
 
@@ -549,14 +557,12 @@ Be conversational and thorough. Show your reasoning. Think out loud.`
     pushAgentMsg()
     const memories = await scoreMemories(productContent || state.productMd)
     const memBlock = buildMemoryBlock(memories)
+    const approvedStack2 = await loadApprovedStack()
     const system = `You are Agent 2 - Tech Architect for the Dotsure AI Build Harness.
 ${GUARDRAILS}${memBlock}
 
 APPROVED STACK AT DOTSURE:
-- Next.js (Frontend) - React framework
-- Payload CMS (CMS) - Headless CMS
-- Supabase (Database) - PostgreSQL platform
-- Vercel (Hosting) - Frontend cloud
+${approvedStack2}
 - GitHub (Source Control) - Version control
 - Claude Code (AI Development) - Agentic coding
 
@@ -674,7 +680,8 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         setStreaming(true)
         setState(s => ({ ...s, stage: "ARCHITECTING" }))
         pushAgentMsg()
-        const system = `You are Agent 2 - Tech Architect. The user has feedback. Incorporate it using only approved tools (Next.js, Payload CMS, Supabase, Vercel, GitHub, Claude Code). End with:\n## READY FOR TECHSTACK.MD\n[updated document]`
+        const approvedStack2rev = await loadApprovedStack()
+        const system = `You are Agent 2 - Tech Architect. The user has feedback. Incorporate it using only approved tools:\n${approvedStack2rev}\nEnd with:\n## READY FOR TECHSTACK.MD\n[updated document]`
         try {
           const r = await streamClaude(msg, system, appendToLastAgent)
           const cost = calcCost("claude-sonnet-4-6", r.inputTokens, r.outputTokens)
