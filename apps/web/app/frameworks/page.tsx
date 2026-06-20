@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 interface Control {
   id: string
   title: string

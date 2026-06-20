@@ -904,7 +904,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         <div className="card">
           <div className="card-head">
             <h3>{mode === "AUTO" ? "Describe your idea — the agent handles the rest" : "What do you want to build?"}</h3>
-            <button onClick={() => setMode(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--g500)", padding: "2px 8px", borderRadius: 4, border: "1px solid var(--g200)" }}>
+            <button onClick={() => setMode(null)} style={{ background: "none", cursor: "pointer", fontSize: 11, color: "var(--g500)", padding: "2px 8px", borderRadius: 4, border: "1px solid var(--g200)" }}>
               Switch mode
             </button>
           </div>
