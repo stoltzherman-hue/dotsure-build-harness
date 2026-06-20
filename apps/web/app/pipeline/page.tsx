@@ -166,12 +166,15 @@ function PipelineInner() {
     latencyMs: number; costUsd: number; guardrailFlag: boolean; flagReason?: string
   }) => {
     try {
-      const sb = createClient()
-      await sb.from("PipelineRun").insert({
-        agentName: opts.agentName, model: opts.model,
-        inputTokens: opts.inputTokens, outputTokens: opts.outputTokens,
-        latencyMs: opts.latencyMs, costUsd: opts.costUsd,
-        guardrailFlag: opts.guardrailFlag, flagReason: opts.flagReason || null,
+      await fetch("/api/log-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentName: opts.agentName, model: opts.model,
+          inputTokens: opts.inputTokens, outputTokens: opts.outputTokens,
+          latencyMs: opts.latencyMs, costUsd: opts.costUsd,
+          guardrailFlag: opts.guardrailFlag, flagReason: opts.flagReason || null,
+        }),
       })
     } catch {}
   }
