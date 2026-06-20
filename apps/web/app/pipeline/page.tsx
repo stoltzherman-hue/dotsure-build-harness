@@ -962,6 +962,27 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
               </div>
             </div>
 
+            {/* Live agent output stream */}
+            {(() => {
+              const lastAgent = [...state.messages].reverse().find(m => m.role === "agent")
+              const isStreaming = autoStatus === "running"
+              if (!lastAgent?.content && !isStreaming) return null
+              const agentColor = autoStep1 === "running" ? "var(--org)" : autoStep2 === "running" ? "var(--grn)" : "#7c3aed"
+              const agentName = autoStep1 === "running" ? "Product Scoper" : autoStep2 === "running" ? "Tech Architect" : "Governance Assessor"
+              return (
+                <div style={{ marginTop: 16, background: "var(--g50)", borderRadius: 8, border: `1px solid var(--g100)` }}>
+                  <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--g100)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: agentColor, flexShrink: 0, ...(isStreaming && lastAgent?.content ? { animation: "pulse 1.5s ease-in-out infinite" } : {}) }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: agentColor, textTransform: "uppercase", letterSpacing: "0.05em" }}>{agentName} — live output</span>
+                  </div>
+                  <div style={{ padding: "12px 14px", maxHeight: 320, overflowY: "auto", fontSize: 12, lineHeight: 1.7, whiteSpace: "pre-wrap", color: "var(--g800)", fontFamily: "inherit" }}>
+                    {lastAgent?.content || <span style={{ color: "var(--g300)", fontFamily: "monospace" }}>|</span>}
+                    {isStreaming && lastAgent?.content && <span style={{ color: agentColor, fontFamily: "monospace", animation: "pulse 1s step-end infinite" }}>▌</span>}
+                  </div>
+                </div>
+              )
+            })()}
+
             {autoStatus === "done" && state.projectId && (
               <div style={{ marginTop: 20, padding: 16, background: "#f0fff4", borderRadius: 10, border: "1px solid #bbf7d0", textAlign: "center" }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#166534", marginBottom: 6 }}>Pipeline complete — project registered</div>
@@ -1131,7 +1152,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         )
       })()}
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
     </div>
   )
 }
