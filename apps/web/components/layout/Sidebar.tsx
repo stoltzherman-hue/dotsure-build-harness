@@ -23,6 +23,10 @@ const nav = [
     { href: "/risk", label: "Risk dashboard", d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM12 8v4M12 16h.01" },
   ]},
   { section: "Finance", items: [{ href: "/finops", label: "FinOps", d: "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" }]},
+  { section: "Operations", items: [
+    { href: "/memory", label: "Knowledge base", d: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 16v-4M12 8h.01" },
+    { href: "/debug", label: "Debug log", d: "M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v4M12 17h.01" },
+  ]},
   { section: "Audit", items: [{ href: "/audit", label: "Audit log", d: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" }]},
   { section: "Admin", items: [
     { href: "/users", label: "Users & roles", d: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z" },
