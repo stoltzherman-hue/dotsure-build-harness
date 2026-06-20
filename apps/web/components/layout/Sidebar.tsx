@@ -22,6 +22,7 @@ const nav = [
     { href: "/deployments", label: "Deployments", d: "M5 12h14M12 5l7 7-7 7" },
     { href: "/risk", label: "Risk dashboard", d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM12 8v4M12 16h.01" },
     { href: "/frameworks", label: "AI frameworks", d: "M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" },
+    { href: "/regulatory", label: "Regulatory feed", d: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l6 6v8a2 2 0 01-2 2zM14 4v6h6M9 14h6M9 18h4" },
   ]},
   { section: "Finance", items: [{ href: "/finops", label: "FinOps", d: "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" }]},
   { section: "Operations", items: [
