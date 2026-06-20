@@ -109,12 +109,24 @@ function PipelineInner() {
   const [guardrailWarning, setGuardrailWarning] = useState<string | null>(null)
   const [sessionRunCost, setSessionRunCost] = useState(0)
   const [showMemoryPrompt, setShowMemoryPrompt] = useState(false)
+  const [costEstimate, setCostEstimate] = useState<{ avgCost: number; avgLatencySec: number; runCount: number } | null>(null)
   const [state, setState] = useState<AgentState>({
     stage: "IDLE", messages: [], productMd: "", techstackMd: "", governanceMd: "", sessionId: null, projectId: null
   })
 
   const stateRef = useRef(state)
   useEffect(() => { stateRef.current = state }, [state])
+
+  useEffect(() => {
+    supabase.from("PipelineRun").select("costUsd,latencyMs").then(({ data }) => {
+      if (!data || data.length === 0) return
+      const valid = (data as any[]).filter(r => r.costUsd != null && r.latencyMs != null)
+      if (valid.length === 0) return
+      const avgCost = valid.reduce((s: number, r: any) => s + r.costUsd, 0) / valid.length
+      const avgLatencySec = valid.reduce((s: number, r: any) => s + r.latencyMs, 0) / valid.length / 1000
+      setCostEstimate({ avgCost, avgLatencySec, runCount: valid.length })
+    })
+  }, [])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [state.messages])
 
@@ -836,6 +848,14 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
           </div>
         )
       })()}
+
+      {/* Cost estimate banner */}
+      {state.stage === "IDLE" && costEstimate && costEstimate.runCount >= 3 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 16px", background: "var(--g50)", border: "1px solid var(--g100)", borderRadius: 10, fontSize: 12, color: "var(--g600)" }}>
+          <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: "var(--grn)", fill: "none", strokeWidth: 2, flexShrink: 0 }}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span>Based on <strong>{costEstimate.runCount}</strong> past runs — estimated cost <strong style={{ color: "var(--grn)" }}>${costEstimate.avgCost.toFixed(4)}</strong> · estimated time <strong>{costEstimate.avgLatencySec.toFixed(0)}s</strong></span>
+        </div>
+      )}
 
       {/* Mode selector */}
       {state.stage === "IDLE" && mode === null && (
