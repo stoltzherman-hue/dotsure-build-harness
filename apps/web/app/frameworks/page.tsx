@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { createClient } from "@/lib/supabase"
 
 interface Control {
   id: string
@@ -149,6 +150,66 @@ function FrameworkSection({ section }: { section: FrameworkSection }) {
 
 export default function FrameworksPage() {
   const [tab, setTab] = useState<"iso" | "nist">("iso")
+  const [generating, setGenerating] = useState(false)
+  const [report, setReport] = useState<string | null>(null)
+
+  const generateReport = async () => {
+    setGenerating(true)
+    setReport(null)
+    try {
+      const sb = createClient()
+      const [{ data: projects }, { data: runs }, { data: memories }, { data: assessments }] = await Promise.all([
+        sb.from("Project").select("name, riskTier, status").order("createdAt", { ascending: false }).limit(20),
+        sb.from("PipelineRun").select("costUsd, guardrailFlag, createdAt").order("createdAt", { ascending: false }).limit(50),
+        sb.from("Memory").select("type, title").limit(20),
+        sb.from("ComplianceAssessment").select("overallScore, certificateIssued").limit(20),
+      ])
+
+      const totalCost = (runs || []).reduce((s: number, r: any) => s + (r.costUsd || 0), 0)
+      const flags = (runs || []).filter((r: any) => r.guardrailFlag).length
+      const avgScore = assessments?.length ? Math.round((assessments as any[]).reduce((s, a) => s + a.overallScore, 0) / assessments.length) : 0
+
+      const isoAllControls = ISO42001.flatMap(s => s.controls)
+      const isoCounts = { covered: 0, partial: 0, "not-covered": 0 }
+      isoAllControls.forEach(c => isoCounts[c.status]++)
+      const isoCoverage = Math.round((isoCounts.covered + isoCounts.partial * 0.5) / isoAllControls.length * 100)
+
+      const gaps = [...ISO42001, ...NIST_RMF].flatMap(s => s.controls).filter(c => c.status === "not-covered" || c.status === "partial")
+
+      const prompt = `You are a senior AI governance officer at Dotsure, a South African short-term insurer. Generate a formal quarterly management review report for the AI Management System (AIMS) per ISO 42001 §9.3.
+
+PLATFORM DATA (as of ${new Date().toLocaleDateString("en-ZA")}):
+- Projects registered: ${projects?.length || 0}
+- Risk distribution: ${(projects || []).map((p: any) => p.riskTier).join(", ") || "none"}
+- Pipeline runs: ${runs?.length || 0}, total AI spend: R${(totalCost * 18.5).toFixed(2)} (ZAR)
+- Guardrail flags triggered: ${flags}
+- Average compliance score: ${avgScore}/100
+- ISO 42001 coverage: ${isoCoverage}%
+- Knowledge base entries: ${memories?.length || 0}
+- Controls not fully covered: ${gaps.map(g => g.id + " " + g.title).join("; ")}
+
+Write a professional management review report with these sections:
+1. Executive summary (3-4 sentences)
+2. AIMS performance against objectives
+3. Risk posture summary
+4. Compliance status (POPIA, FAIS, PPR/TCF)
+5. Gaps and corrective actions required
+6. Recommendations for next quarter
+
+Use formal SA insurance regulatory language. Be specific to the data provided. Max 600 words.`
+
+      const res = await fetch("/api/concierge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1500, messages: [{ role: "user", content: prompt }] }),
+      })
+      const data = await res.json()
+      setReport(data.content?.[0]?.text || "Failed to generate report")
+    } catch (e: any) {
+      setReport(`Error: ${e.message}`)
+    }
+    setGenerating(false)
+  }
 
   const allControls = (tab === "iso" ? ISO42001 : NIST_RMF).flatMap(s => s.controls)
   const counts = { covered: 0, partial: 0, "not-covered": 0 }
@@ -161,10 +222,32 @@ export default function FrameworksPage() {
     <div className="content">
       <div className="page-head">
         <div><h1>AI Governance Frameworks</h1><p>Platform coverage mapped to ISO 42001 and NIST AI Risk Management Framework</p></div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: coverage >= 75 ? "var(--grn)" : "var(--org)", background: "var(--g50)", padding: "6px 14px", borderRadius: 8, border: "1px solid var(--g200)" }}>
-          {coverage}% coverage
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: coverage >= 75 ? "var(--grn)" : "var(--org)", background: "var(--g50)", padding: "6px 14px", borderRadius: 8, border: "1px solid var(--g200)" }}>
+            {coverage}% coverage
+          </div>
+          <button onClick={generateReport} disabled={generating} className="btn btn-org" style={{ fontSize: 12 }}>
+            {generating ? "Generating..." : "§9.3 Management review"}
+          </button>
         </div>
       </div>
+
+      {report && (
+        <div className="card" style={{ border: "2px solid #7c3aed" }}>
+          <div className="card-head">
+            <h3 style={{ color: "#7c3aed" }}>ISO 42001 §9.3 — Management Review Report</h3>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--g500)" }}>{new Date().toLocaleDateString("en-ZA", { day: "2-digit", month: "long", year: "numeric" })}</span>
+              <button onClick={() => { const b = new Blob([report], { type: "text/plain" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `management-review-${new Date().toISOString().slice(0,10)}.txt`; a.click() }}
+                className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>Download</button>
+              <button onClick={() => setReport(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--g400)", fontSize: 18, lineHeight: 1 }}>×</button>
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ fontSize: 12, color: "var(--g800)", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{report}</div>
+          </div>
+        </div>
+      )}
 
       {/* Coverage summary */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 4 }}>
