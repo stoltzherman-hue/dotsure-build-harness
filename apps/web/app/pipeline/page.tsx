@@ -17,9 +17,32 @@ interface AgentState {
 }
 
 const AGENTS = {
-  SCOPING: { name: "Product Scoper", role: "Agent 1", color: "var(--org)", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z", desc: "Researches your idea, defines requirements, self-audits" },
-  ARCHITECTING: { name: "Tech Architect", role: "Agent 2", color: "var(--grn)", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5", desc: "Proposes stack, validates against approved catalogue" },
-  GOVERNING: { name: "Governance Assessor", role: "Agent 3", color: "#7c3aed", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z", desc: "Assesses risk, determines build path, produces evidence pack" },
+  SCOPING:      { name: "Product Scoper",      role: "Agent 1", color: "var(--org)", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",                             desc: "Researches your idea, defines requirements, self-audits",      model: "claude-haiku-4-5-20251001",  modelLabel: "Haiku 4.5 — fast" },
+  ARCHITECTING: { name: "Tech Architect",      role: "Agent 2", color: "var(--grn)", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",                 desc: "Proposes stack, validates against approved catalogue",         model: "claude-sonnet-4-6",          modelLabel: "Sonnet 4.6 — balanced" },
+  GOVERNING:    { name: "Governance Assessor", role: "Agent 3", color: "#7c3aed",    icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",                             desc: "Assesses risk, determines build path, produces evidence pack", model: "claude-sonnet-4-6",          modelLabel: "Sonnet 4.6 — balanced" },
+}
+
+const LIFECYCLE_STAGES = [
+  { key: "intent",        label: "Intent",        hint: "What problem are we solving?" },
+  { key: "research",      label: "Research",      hint: "Problem space explored?" },
+  { key: "spec",          label: "Spec",          hint: "Idea documented?" },
+  { key: "governance",    label: "Governance",    hint: "Risk tier pre-assessed?" },
+  { key: "design",        label: "Design",        hint: "User flow / mockup exists?" },
+  { key: "architecture",  label: "Architecture",  hint: "Tech approach discussed?" },
+  { key: "orchestration", label: "Orchestration", hint: "Agent plan confirmed?" },
+]
+
+function computeScorecard(productMd: string, techstackMd: string, governanceMd: string) {
+  const combined = [productMd, techstackMd, governanceMd].join("\n").toLowerCase()
+  const sections = ["requirements", "assumptions", "risk", "architecture", "regulatory", "build path", "compliance"]
+  const found = sections.filter(s => combined.includes(s)).length
+  const completeness = Math.round((found / sections.length) * 100)
+  const assumptions = (combined.match(/assumption/g) || []).length
+  const risks = (combined.match(/\brisk\b/g) || []).length
+  const lowConf = combined.includes("low confidence") || combined.includes("uncertain") || combined.includes("unclear")
+  const arcRequired = combined.includes("arc-required")
+  const overallScore = Math.min(100, Math.round(completeness * 0.5 + Math.min(assumptions * 4, 25) + Math.min(risks * 2, 25)))
+  return { completeness, assumptions, risks, lowConf, arcRequired, overallScore }
 }
 
 function AutoProgressStep({ label, status, color }: { label: string; status: "waiting" | "running" | "done"; color: string }) {
@@ -62,6 +85,8 @@ function PipelineInner() {
   const [mode, setMode] = useState<"MANUAL" | "AUTO" | null>(null)
   const [autoStatus, setAutoStatus] = useState<"idle" | "running" | "saving" | "done">("idle")
   const [autoLog, setAutoLog] = useState<string[]>([])
+  const [lifecycle, setLifecycle] = useState<Record<string, boolean>>({})
+  const [showLifecycle, setShowLifecycle] = useState(false)
   const [state, setState] = useState<AgentState>({
     stage: "IDLE", messages: [], productMd: "", techstackMd: "", governanceMd: "", sessionId: null, projectId: null
   })
@@ -76,11 +101,11 @@ function PipelineInner() {
 
   const appendAutoLog = (msg: string) => setAutoLog(l => [...l, msg])
 
-  const streamClaude = async (prompt: string, systemPrompt: string, onChunk: (c: string) => void, history: { role: string; content: string }[] = []) => {
+  const streamClaude = async (prompt: string, systemPrompt: string, onChunk: (c: string) => void, history: { role: string; content: string }[] = [], model = "claude-sonnet-4-6") => {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 4000, system: systemPrompt, messages: [...history, { role: "user", content: prompt }], stream: true }),
+      body: JSON.stringify({ model, max_tokens: 4000, system: systemPrompt, messages: [...history, { role: "user", content: prompt }], stream: true }),
     })
     if (!res.ok) throw new Error(`Claude API error: ${res.status}`)
     const reader = res.body?.getReader()
@@ -170,7 +195,7 @@ Always end with the READY FOR PRODUCT.MD section with the full document.`
 
     let productMd = ""
     try {
-      const text1 = await streamClaude(prompt, system1, appendToLastAgent)
+      const text1 = await streamClaude(prompt, system1, appendToLastAgent, [], AGENTS.SCOPING.model)
       if (text1.includes("READY FOR PRODUCT.MD")) {
         productMd = text1.split("## READY FOR PRODUCT.MD")[1]?.trim() || text1
       } else { productMd = text1 }
@@ -211,7 +236,7 @@ Always end with READY FOR TECHSTACK.MD.`
 
     let techstackMd = ""
     try {
-      const text2 = await streamClaude(`Here is the product requirements:\n\n${productMd}\n\nArchitect the technical solution.`, system2, appendToLastAgent)
+      const text2 = await streamClaude(`Here is the product requirements:\n\n${productMd}\n\nArchitect the technical solution.`, system2, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
       if (text2.includes("READY FOR TECHSTACK.MD")) {
         techstackMd = text2.split("## READY FOR TECHSTACK.MD")[1]?.trim() || text2
       } else { techstackMd = text2 }
@@ -246,7 +271,7 @@ Structure:
 
     let governanceMd = ""
     try {
-      const text3 = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system3, appendToLastAgent)
+      const text3 = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model)
       if (text3.includes("READY FOR GOVERNANCE.MD")) {
         governanceMd = text3.split("## READY FOR GOVERNANCE.MD")[1]?.split("## EVIDENCE PACK")[0]?.trim() || text3
       } else { governanceMd = text3 }
@@ -358,7 +383,7 @@ Then EITHER ask ONE clarifying question if truly needed OR write:
 
 Be conversational and thorough. Show your reasoning. Think out loud.`
     try {
-      const text = await streamClaude(prompt, system, appendToLastAgent)
+      const text = await streamClaude(prompt, system, appendToLastAgent, [], AGENTS.SCOPING.model)
       if (text.includes("READY FOR PRODUCT.MD")) {
         const md = text.split("## READY FOR PRODUCT.MD")[1]?.trim() || text
         setState(s => ({ ...s, productMd: md, stage: "AWAITING_USER_SCOPE" }))
@@ -400,7 +425,7 @@ You MUST always end your response with the following section, even if you have q
 ## READY FOR TECHSTACK.MD
 [full markdown document]`
     try {
-      const text = await streamClaude(`Here is the product requirements:\n\n${productContent || state.productMd}\n\nArchitect the technical solution based on these requirements.`, system, appendToLastAgent)
+      const text = await streamClaude(`Here is the product requirements:\n\n${productContent || state.productMd}\n\nArchitect the technical solution based on these requirements.`, system, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
       if (text.includes("READY FOR TECHSTACK.MD")) {
         const md = text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || text
         setState(s => ({ ...s, techstackMd: md, stage: "AWAITING_USER_ARCH" }))
@@ -444,7 +469,7 @@ Structure your response:
 
 IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
     try {
-      const text = await streamClaude(`product.md:\n\n${state.productMd}\n\ntechstack.md:\n\n${state.techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system, appendToLastAgent)
+      const text = await streamClaude(`product.md:\n\n${state.productMd}\n\ntechstack.md:\n\n${state.techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system, appendToLastAgent, [], AGENTS.GOVERNING.model)
       let governanceMd = text
       if (text.includes("READY FOR GOVERNANCE.MD")) {
         governanceMd = text.split("## READY FOR GOVERNANCE.MD")[1]?.split("## EVIDENCE PACK")[0]?.trim() || text
@@ -566,6 +591,44 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         </div>
       )}
 
+      {/* Lifecycle checklist — always shown at IDLE, advisory only */}
+      {state.stage === "IDLE" && (() => {
+        const checked = LIFECYCLE_STAGES.filter(s => lifecycle[s.key]).length
+        const pct = Math.round((checked / LIFECYCLE_STAGES.length) * 100)
+        return (
+          <div className="card">
+            <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={() => setShowLifecycle(v => !v)}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--g900)" }}>Pre-flight checklist</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: checked === LIFECYCLE_STAGES.length ? "var(--grn)" : "var(--org)", background: checked === LIFECYCLE_STAGES.length ? "#f0fff4" : "#fff8f0", padding: "2px 8px", borderRadius: 10 }}>
+                    {checked}/{LIFECYCLE_STAGES.length} stages
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--g500)" }}>Advisory — you can start at any time</span>
+                </div>
+                <div style={{ height: 3, background: "var(--g100)", borderRadius: 2, marginTop: 6, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${pct}%`, background: checked === LIFECYCLE_STAGES.length ? "var(--grn)" : "var(--org)", borderRadius: 2, transition: "width 0.3s" }} />
+                </div>
+              </div>
+              <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: "var(--g400)", fill: "none", strokeWidth: 2, transform: showLifecycle ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }}><polyline points="6 9 12 15 18 9" /></svg>
+            </div>
+            {showLifecycle && (
+              <div style={{ padding: "0 16px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {LIFECYCLE_STAGES.map(s => (
+                  <label key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: lifecycle[s.key] ? "#f0fff4" : "var(--g50)", cursor: "pointer", border: `1px solid ${lifecycle[s.key] ? "#bbf7d0" : "var(--g100)"}` }}>
+                    <input type="checkbox" checked={!!lifecycle[s.key]} onChange={e => setLifecycle(l => ({ ...l, [s.key]: e.target.checked }))} style={{ accentColor: "var(--grn)", width: 14, height: 14 }} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--g900)" }}>{s.label}</div>
+                      <div style={{ fontSize: 10, color: "var(--g500)" }}>{s.hint}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Mode selector — shown only at IDLE before mode chosen */}
       {state.stage === "IDLE" && mode === null && (
         <div className="card">
@@ -669,6 +732,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--g900)" }}>{agent.name}</div>
                   <div style={{ fontSize: 10, color: "var(--g500)", marginTop: 2, lineHeight: 1.4 }}>{agent.desc}</div>
+                  <div style={{ fontSize: 9, color: "var(--g400)", marginTop: 4, background: "var(--g50)", padding: "1px 6px", borderRadius: 4, display: "inline-block" }}>{agent.modelLabel}</div>
                 </div>
               )
             })}
@@ -873,6 +937,53 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
           </div>
         </div>
       )}
+
+      {/* Scorecard — shown after COMPLETE for both modes */}
+      {state.stage === "COMPLETE" && state.productMd && (() => {
+        const sc = computeScorecard(state.productMd, state.techstackMd, state.governanceMd)
+        const scoreColor = sc.overallScore >= 80 ? "var(--grn)" : sc.overallScore >= 50 ? "var(--org)" : "#dc2626"
+        return (
+          <div className="card">
+            <div className="card-head">
+              <h3>Run scorecard</h3>
+              <span style={{ fontSize: 11, color: "var(--g500)" }}>Evidence quality assessment</span>
+            </div>
+            <div className="card-body">
+              <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 20, alignItems: "center" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 40, fontWeight: 800, color: scoreColor }}>{sc.overallScore}</div>
+                  <div style={{ fontSize: 10, color: "var(--g500)", fontWeight: 600 }}>OVERALL SCORE</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {[
+                    { label: "Section completeness", value: `${sc.completeness}%`, ok: sc.completeness >= 70 },
+                    { label: "Assumptions flagged", value: sc.assumptions, ok: sc.assumptions >= 3 },
+                    { label: "Risks identified", value: sc.risks, ok: sc.risks >= 5 },
+                    { label: "ARC-REQUIRED flagged", value: sc.arcRequired ? "Yes" : "No", ok: true },
+                  ].map(item => (
+                    <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--g50)", borderRadius: 8 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: item.ok ? "var(--grn)" : "var(--org)", flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 10, color: "var(--g500)" }}>{item.label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--g900)" }}>{item.value}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {sc.lowConf && (
+                <div style={{ marginTop: 12, padding: "8px 12px", background: "#fff8f0", borderRadius: 8, border: "1px solid #fed7aa", fontSize: 11, color: "#92400e", display: "flex", gap: 8 }}>
+                  <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: "#f97316", fill: "none", strokeWidth: 2, flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  Low-confidence signals detected in agent outputs. Review flagged sections before registering.
+                </div>
+              )}
+              <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <a href="/memory"><button className="btn btn-ghost" style={{ fontSize: 12 }}>Save lesson to knowledge base</button></a>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
