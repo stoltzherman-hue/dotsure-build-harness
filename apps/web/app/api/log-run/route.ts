@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-// Server-side pipeline run logger.
-// Uses SUPABASE_SERVICE_ROLE_KEY (server-only) to bypass RLS entirely.
-// Client components call /api/log-run instead of inserting into Supabase directly.
+import { createClient } from "@supabase/supabase-js"
 
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -19,20 +16,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const res = await fetch(`${supabaseUrl}/rest/v1/PipelineRun`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": serviceKey,
-      "Authorization": `Bearer ${serviceKey}`,
-      "Prefer": "return=minimal",
-    },
-    body: JSON.stringify(body),
+  const sb = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
   })
 
-  if (!res.ok) {
-    const err = await res.text()
-    return NextResponse.json({ error: err }, { status: res.status })
+  const { error } = await sb.from("PipelineRun").insert(body)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })
