@@ -22,6 +22,27 @@ const AGENTS = {
   GOVERNING:    { name: "Governance Assessor", role: "Agent 3", color: "#7c3aed",    icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",                             desc: "Assesses risk, determines build path, produces evidence pack", model: "claude-sonnet-4-6",          modelLabel: "Sonnet 4.6 — balanced" },
 }
 
+const MODEL_COSTS: Record<string, { inputPer1M: number; outputPer1M: number }> = {
+  "claude-haiku-4-5-20251001": { inputPer1M: 0.80, outputPer1M: 4.00 },
+  "claude-sonnet-4-6":         { inputPer1M: 3.00, outputPer1M: 15.00 },
+}
+
+const INJECTION_PATTERNS = [
+  /ignore (previous|all|above) instructions/i,
+  /you are now/i,
+  /jailbreak/i,
+  /pretend you (are|have no)/i,
+  /disregard (your|the) (system|instructions)/i,
+  /act as (a|an) (different|unrestricted)/i,
+  /bypass (safety|filter|guardrail)/i,
+]
+
+const OUTPUT_SCAN_PATTERNS = [
+  { re: /\b(exec|eval|system|rm -rf|DROP TABLE|DELETE FROM)\b/i, reason: "Potential code injection in output" },
+  { re: /as an ai (language model|assistant), i (cannot|will not)/i, reason: "Agent broke character / refusal loop" },
+  { re: /\b(password|api.?key|secret|token)\s*[:=]\s*\S+/i, reason: "Possible credential leakage in output" },
+]
+
 const LIFECYCLE_STAGES = [
   { key: "intent",        label: "Intent",        hint: "What problem are we solving?" },
   { key: "research",      label: "Research",      hint: "Problem space explored?" },
@@ -77,8 +98,6 @@ function PipelineInner() {
   const { profile } = useAuth()
   const supabase = createClient()
   const bottomRef = useRef<HTMLDivElement>(null)
-  const [apiKey, setApiKey] = useState(() => typeof window !== "undefined" ? localStorage.getItem("anthropic_api_key") || "" : "")
-  const [showKeyInput, setShowKeyInput] = useState(false)
   const [userInput, setUserInput] = useState("")
   const [interjectInput, setInterjectInput] = useState("")
   const [streaming, setStreaming] = useState(false)
@@ -87,6 +106,8 @@ function PipelineInner() {
   const [autoLog, setAutoLog] = useState<string[]>([])
   const [lifecycle, setLifecycle] = useState<Record<string, boolean>>({})
   const [showLifecycle, setShowLifecycle] = useState(false)
+  const [guardrailWarning, setGuardrailWarning] = useState<string | null>(null)
+  const [sessionRunCost, setSessionRunCost] = useState(0)
   const [state, setState] = useState<AgentState>({
     stage: "IDLE", messages: [], productMd: "", techstackMd: "", governanceMd: "", sessionId: null, projectId: null
   })
@@ -101,16 +122,81 @@ function PipelineInner() {
 
   const appendAutoLog = (msg: string) => setAutoLog(l => [...l, msg])
 
-  const streamClaude = async (prompt: string, systemPrompt: string, onChunk: (c: string) => void, history: { role: string; content: string }[] = [], model = "claude-sonnet-4-6") => {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+  // ─── GUARDRAILS ────────────────────────────────────────────────────────────
+
+  const checkGuardrails = (input: string): string | null => {
+    for (const p of INJECTION_PATTERNS) {
+      if (p.test(input)) return `Potential prompt injection detected: matched pattern "${p.source}"`
+    }
+    return null
+  }
+
+  const scanOutput = (text: string): string | null => {
+    for (const { re, reason } of OUTPUT_SCAN_PATTERNS) {
+      if (re.test(text)) return reason
+    }
+    return null
+  }
+
+  // ─── MEMORY RETRIEVAL ─────────────────────────────────────────────────────
+
+  const scoreMemories = async (prompt: string): Promise<{ type: string; title: string; content: string }[]> => {
+    try {
+      const sb = createClient()
+      const { data } = await sb.from("Memory").select("title, content, type").order("createdAt", { ascending: false }).limit(50)
+      if (!data?.length) return []
+      const words = prompt.toLowerCase().split(/\W+/).filter(w => w.length > 3)
+      return (data as any[])
+        .map(m => ({ ...m, score: words.filter(w => (m.title + " " + m.content).toLowerCase().includes(w)).length }))
+        .filter(m => m.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3)
+    } catch { return [] }
+  }
+
+  const buildMemoryBlock = (memories: { type: string; title: string; content: string }[]) => {
+    if (!memories.length) return ""
+    return `\n\n## INSTITUTIONAL KNOWLEDGE\nThe following lessons from previous Dotsure projects are relevant to this prompt:\n${memories.map(m => `[${m.type}] ${m.title}: ${m.content}`).join("\n")}`
+  }
+
+  // ─── OBSERVABILITY: log PipelineRun ──────────────────────────────────────
+
+  const logPipelineRun = async (opts: {
+    agentName: string; model: string; inputTokens: number; outputTokens: number;
+    latencyMs: number; costUsd: number; guardrailFlag: boolean; flagReason?: string
+  }) => {
+    try {
+      const sb = createClient()
+      await sb.from("PipelineRun").insert({
+        agentName: opts.agentName, model: opts.model,
+        inputTokens: opts.inputTokens, outputTokens: opts.outputTokens,
+        latencyMs: opts.latencyMs, costUsd: opts.costUsd,
+        guardrailFlag: opts.guardrailFlag, flagReason: opts.flagReason || null,
+      })
+    } catch {}
+  }
+
+  // ─── STREAM CLAUDE (returns tokens + latency) ─────────────────────────────
+
+  const streamClaude = async (
+    prompt: string,
+    systemPrompt: string,
+    onChunk: (c: string) => void,
+    history: { role: string; content: string }[] = [],
+    model = "claude-sonnet-4-6"
+  ): Promise<{ text: string; inputTokens: number; outputTokens: number; latencyMs: number }> => {
+    const t0 = Date.now()
+    const res = await fetch("/api/concierge", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model, max_tokens: 4000, system: systemPrompt, messages: [...history, { role: "user", content: prompt }], stream: true }),
     })
     if (!res.ok) throw new Error(`Claude API error: ${res.status}`)
     const reader = res.body?.getReader()
     const decoder = new TextDecoder()
     let full = ""
+    let inputTokens = 0
+    let outputTokens = 0
     while (reader) {
       const { done, value } = await reader.read()
       if (done) break
@@ -118,11 +204,25 @@ function PipelineInner() {
       for (const line of lines) {
         try {
           const data = JSON.parse(line.slice(6))
-          if (data.type === "content_block_delta" && data.delta?.text) { full += data.delta.text; onChunk(data.delta.text) }
+          if (data.type === "message_start" && data.message?.usage) {
+            inputTokens = data.message.usage.input_tokens || 0
+          }
+          if (data.type === "message_delta" && data.usage) {
+            outputTokens = data.usage.output_tokens || 0
+          }
+          if (data.type === "content_block_delta" && data.delta?.text) {
+            full += data.delta.text
+            onChunk(data.delta.text)
+          }
         } catch {}
       }
     }
-    return full
+    return { text: full, inputTokens, outputTokens, latencyMs: Date.now() - t0 }
+  }
+
+  const calcCost = (model: string, inputTokens: number, outputTokens: number) => {
+    const c = MODEL_COSTS[model] || MODEL_COSTS["claude-sonnet-4-6"]
+    return (inputTokens / 1_000_000) * c.inputPer1M + (outputTokens / 1_000_000) * c.outputPer1M
   }
 
   const appendToLastAgent = (chunk: string) => {
@@ -148,9 +248,17 @@ NON-NEGOTIABLE AGENT CONTROLS (from ARC Harness Engineering governance):
 
   const startPipeline = async () => {
     if (!userInput.trim()) return
-    if (!apiKey) { setShowKeyInput(true); return }
     const prompt = userInput
+
+    const flag = checkGuardrails(prompt)
+    if (flag) {
+      setGuardrailWarning(flag)
+    } else {
+      setGuardrailWarning(null)
+    }
+
     setUserInput("")
+    setSessionRunCost(0)
 
     if (mode === "AUTO") {
       await runAutoPipeline(prompt)
@@ -175,10 +283,15 @@ NON-NEGOTIABLE AGENT CONTROLS (from ARC Harness Engineering governance):
     try { const { data: s } = await supabase.from("PipelineSession").insert({ stage: "SCOPING", userPrompt: prompt, status: "RUNNING", agentHistory: {} }).select().single(); session = s } catch {}
     setState(s => ({ ...s, sessionId: session?.id || null }))
 
+    // Retrieve relevant memories for context
+    const memories = await scoreMemories(prompt)
+    const memBlock = buildMemoryBlock(memories)
+    if (memories.length) appendAutoLog(`↑ ${memories.length} institutional memory match${memories.length > 1 ? "es" : ""} injected`)
+
     appendAutoLog("Agent 1 - Product Scoper starting...")
     pushAgentMsg()
     const system1 = `You are Agent 1 - Product Scoper for the Dotsure AI Build Harness. Senior product manager specialising in South African insurance technology.
-${GUARDRAILS}
+${GUARDRAILS}${memBlock}
 
 Your job: deeply understand the idea, research the problem space, define clear requirements, self-audit, produce product.md.
 
@@ -195,12 +308,17 @@ Always end with the READY FOR PRODUCT.MD section with the full document.`
 
     let productMd = ""
     try {
-      const text1 = await streamClaude(prompt, system1, appendToLastAgent, [], AGENTS.SCOPING.model)
-      if (text1.includes("READY FOR PRODUCT.MD")) {
-        productMd = text1.split("## READY FOR PRODUCT.MD")[1]?.trim() || text1
-      } else { productMd = text1 }
+      const r1 = await streamClaude(prompt, system1, appendToLastAgent, [], AGENTS.SCOPING.model)
+      const cost1 = calcCost(AGENTS.SCOPING.model, r1.inputTokens, r1.outputTokens)
+      setSessionRunCost(c => c + cost1)
+      const outputFlag = scanOutput(r1.text)
+      await logPipelineRun({ agentName: "Product Scoper", model: AGENTS.SCOPING.model, inputTokens: r1.inputTokens, outputTokens: r1.outputTokens, latencyMs: r1.latencyMs, costUsd: cost1, guardrailFlag: !!outputFlag, flagReason: outputFlag || undefined })
+      appendAutoLog(`✓ product.md — ${r1.inputTokens}in/${r1.outputTokens}out tokens · $${cost1.toFixed(4)} · ${(r1.latencyMs/1000).toFixed(1)}s`)
+      if (outputFlag) { appendAutoLog(`⚠ Output scan: ${outputFlag}`); setGuardrailWarning(outputFlag) }
+      if (r1.text.includes("READY FOR PRODUCT.MD")) {
+        productMd = r1.text.split("## READY FOR PRODUCT.MD")[1]?.trim() || r1.text
+      } else { productMd = r1.text }
       setState(s => ({ ...s, productMd, stage: "ARCHITECTING" }))
-      appendAutoLog("✓ product.md generated")
     } catch (e: any) {
       appendAutoLog(`✗ Agent 1 error: ${e.message}`)
       setAutoStatus("idle")
@@ -211,7 +329,7 @@ Always end with the READY FOR PRODUCT.MD section with the full document.`
     pushAgentMsg()
     setState(s => ({ ...s, stage: "ARCHITECTING" }))
     const system2 = `You are Agent 2 - Tech Architect for the Dotsure AI Build Harness.
-${GUARDRAILS}
+${GUARDRAILS}${memBlock}
 
 APPROVED STACK AT DOTSURE:
 - Next.js (Frontend) - React framework
@@ -236,12 +354,17 @@ Always end with READY FOR TECHSTACK.MD.`
 
     let techstackMd = ""
     try {
-      const text2 = await streamClaude(`Here is the product requirements:\n\n${productMd}\n\nArchitect the technical solution.`, system2, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
-      if (text2.includes("READY FOR TECHSTACK.MD")) {
-        techstackMd = text2.split("## READY FOR TECHSTACK.MD")[1]?.trim() || text2
-      } else { techstackMd = text2 }
+      const r2 = await streamClaude(`Here is the product requirements:\n\n${productMd}\n\nArchitect the technical solution.`, system2, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
+      const cost2 = calcCost(AGENTS.ARCHITECTING.model, r2.inputTokens, r2.outputTokens)
+      setSessionRunCost(c => c + cost2)
+      const outputFlag2 = scanOutput(r2.text)
+      await logPipelineRun({ agentName: "Tech Architect", model: AGENTS.ARCHITECTING.model, inputTokens: r2.inputTokens, outputTokens: r2.outputTokens, latencyMs: r2.latencyMs, costUsd: cost2, guardrailFlag: !!outputFlag2, flagReason: outputFlag2 || undefined })
+      appendAutoLog(`✓ techstack.md — ${r2.inputTokens}in/${r2.outputTokens}out tokens · $${cost2.toFixed(4)} · ${(r2.latencyMs/1000).toFixed(1)}s`)
+      if (outputFlag2) { appendAutoLog(`⚠ Output scan: ${outputFlag2}`); setGuardrailWarning(outputFlag2) }
+      if (r2.text.includes("READY FOR TECHSTACK.MD")) {
+        techstackMd = r2.text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || r2.text
+      } else { techstackMd = r2.text }
       setState(s => ({ ...s, techstackMd, stage: "GOVERNING" }))
-      appendAutoLog("✓ techstack.md generated")
     } catch (e: any) {
       appendAutoLog(`✗ Agent 2 error: ${e.message}`)
       setAutoStatus("idle")
@@ -252,7 +375,7 @@ Always end with READY FOR TECHSTACK.MD.`
     pushAgentMsg()
     setState(s => ({ ...s, stage: "GOVERNING" }))
     const system3 = `You are Agent 3 - Governance Assessor for the Dotsure AI Build Harness. Senior GRC specialist for SA insurance technology.
-${GUARDRAILS}
+${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
 
@@ -271,10 +394,16 @@ Structure:
 
     let governanceMd = ""
     try {
-      const text3 = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model)
-      if (text3.includes("READY FOR GOVERNANCE.MD")) {
-        governanceMd = text3.split("## READY FOR GOVERNANCE.MD")[1]?.split("## EVIDENCE PACK")[0]?.trim() || text3
-      } else { governanceMd = text3 }
+      const r3 = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model)
+      const cost3 = calcCost(AGENTS.GOVERNING.model, r3.inputTokens, r3.outputTokens)
+      setSessionRunCost(c => c + cost3)
+      const outputFlag3 = scanOutput(r3.text)
+      await logPipelineRun({ agentName: "Governance Assessor", model: AGENTS.GOVERNING.model, inputTokens: r3.inputTokens, outputTokens: r3.outputTokens, latencyMs: r3.latencyMs, costUsd: cost3, guardrailFlag: !!outputFlag3, flagReason: outputFlag3 || undefined })
+      appendAutoLog(`✓ governance.md — ${r3.inputTokens}in/${r3.outputTokens}out tokens · $${cost3.toFixed(4)} · ${(r3.latencyMs/1000).toFixed(1)}s`)
+      if (outputFlag3) { appendAutoLog(`⚠ Output scan: ${outputFlag3}`); setGuardrailWarning(outputFlag3) }
+      if (r3.text.includes("READY FOR GOVERNANCE.MD")) {
+        governanceMd = r3.text.split("## READY FOR GOVERNANCE.MD")[1]?.split("## EVIDENCE PACK")[0]?.trim() || r3.text
+      } else { governanceMd = r3.text }
       setState(s => ({ ...s, governanceMd, stage: "COMPLETE" }))
       appendAutoLog("✓ governance.md + evidence pack generated")
     } catch (e: any) {
@@ -325,7 +454,6 @@ Structure:
         await sb.from("ProjectDocument").insert({ projectId: project.id, ...doc, version: 1 })
       }
 
-      // Submit approval request
       const { data: { user } } = await sb.auth.getUser()
       if (user) {
         await sb.from("ApprovalRequest").insert({
@@ -333,7 +461,6 @@ Structure:
           notes: `Auto-submitted by AI pipeline agent. Risk tier: ${riskTier}. Project code: ${projectCode}.`,
         })
 
-        // Notify all GM users
         const { data: gms } = await sb.from("UserProfile").select("id").eq("role", "GM")
         if (gms?.length) {
           await sb.from("Notification").insert(
@@ -366,8 +493,10 @@ Structure:
     setState(s => ({ ...s, stage: "SCOPING" }))
     addMessage("system", "Agent 1 - Product Scoper is analysing your idea...")
     pushAgentMsg()
+    const memories = await scoreMemories(prompt)
+    const memBlock = buildMemoryBlock(memories)
     const system = `You are Agent 1 - Product Scoper for the Dotsure AI Build Harness. You are a senior product manager specialising in South African insurance technology.
-${GUARDRAILS}
+${GUARDRAILS}${memBlock}
 
 Your job: deeply understand the idea, research the problem space, define clear requirements, self-audit, then produce product.md.
 
@@ -383,9 +512,14 @@ Then EITHER ask ONE clarifying question if truly needed OR write:
 
 Be conversational and thorough. Show your reasoning. Think out loud.`
     try {
-      const text = await streamClaude(prompt, system, appendToLastAgent, [], AGENTS.SCOPING.model)
-      if (text.includes("READY FOR PRODUCT.MD")) {
-        const md = text.split("## READY FOR PRODUCT.MD")[1]?.trim() || text
+      const r = await streamClaude(prompt, system, appendToLastAgent, [], AGENTS.SCOPING.model)
+      const cost = calcCost(AGENTS.SCOPING.model, r.inputTokens, r.outputTokens)
+      setSessionRunCost(c => c + cost)
+      const outputFlag = scanOutput(r.text)
+      await logPipelineRun({ agentName: "Product Scoper", model: AGENTS.SCOPING.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens, latencyMs: r.latencyMs, costUsd: cost, guardrailFlag: !!outputFlag, flagReason: outputFlag || undefined })
+      if (outputFlag) setGuardrailWarning(outputFlag)
+      if (r.text.includes("READY FOR PRODUCT.MD")) {
+        const md = r.text.split("## READY FOR PRODUCT.MD")[1]?.trim() || r.text
         setState(s => ({ ...s, productMd: md, stage: "AWAITING_USER_SCOPE" }))
         addMessage("system", "product.md generated. Type 'approve' to continue to architecture, or request changes.")
       } else {
@@ -402,8 +536,10 @@ Be conversational and thorough. Show your reasoning. Think out loud.`
     setState(s => ({ ...s, stage: "ARCHITECTING" }))
     addMessage("system", "Agent 2 - Tech Architect is designing your solution...")
     pushAgentMsg()
+    const memories = await scoreMemories(productContent || state.productMd)
+    const memBlock = buildMemoryBlock(memories)
     const system = `You are Agent 2 - Tech Architect for the Dotsure AI Build Harness.
-${GUARDRAILS}
+${GUARDRAILS}${memBlock}
 
 APPROVED STACK AT DOTSURE:
 - Next.js (Frontend) - React framework
@@ -425,9 +561,14 @@ You MUST always end your response with the following section, even if you have q
 ## READY FOR TECHSTACK.MD
 [full markdown document]`
     try {
-      const text = await streamClaude(`Here is the product requirements:\n\n${productContent || state.productMd}\n\nArchitect the technical solution based on these requirements.`, system, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
-      if (text.includes("READY FOR TECHSTACK.MD")) {
-        const md = text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || text
+      const r = await streamClaude(`Here is the product requirements:\n\n${productContent || state.productMd}\n\nArchitect the technical solution based on these requirements.`, system, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
+      const cost = calcCost(AGENTS.ARCHITECTING.model, r.inputTokens, r.outputTokens)
+      setSessionRunCost(c => c + cost)
+      const outputFlag = scanOutput(r.text)
+      await logPipelineRun({ agentName: "Tech Architect", model: AGENTS.ARCHITECTING.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens, latencyMs: r.latencyMs, costUsd: cost, guardrailFlag: !!outputFlag, flagReason: outputFlag || undefined })
+      if (outputFlag) setGuardrailWarning(outputFlag)
+      if (r.text.includes("READY FOR TECHSTACK.MD")) {
+        const md = r.text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || r.text
         setState(s => ({ ...s, techstackMd: md, stage: "AWAITING_USER_ARCH" }))
         addMessage("system", "techstack.md generated. Type 'approve' to continue to governance, or request changes.")
       } else {
@@ -444,8 +585,10 @@ You MUST always end your response with the following section, even if you have q
     setState(s => ({ ...s, stage: "GOVERNING" }))
     addMessage("system", "Agent 3 - Governance Assessor is evaluating your project...")
     pushAgentMsg()
+    const memories = await scoreMemories(state.productMd + " " + state.techstackMd)
+    const memBlock = buildMemoryBlock(memories)
     const system = `You are Agent 3 - Governance Assessor for the Dotsure AI Build Harness. Senior GRC specialist for SA insurance technology.
-${GUARDRAILS}
+${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
 
@@ -469,10 +612,15 @@ Structure your response:
 
 IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
     try {
-      const text = await streamClaude(`product.md:\n\n${state.productMd}\n\ntechstack.md:\n\n${state.techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system, appendToLastAgent, [], AGENTS.GOVERNING.model)
-      let governanceMd = text
-      if (text.includes("READY FOR GOVERNANCE.MD")) {
-        governanceMd = text.split("## READY FOR GOVERNANCE.MD")[1]?.split("## EVIDENCE PACK")[0]?.trim() || text
+      const r = await streamClaude(`product.md:\n\n${state.productMd}\n\ntechstack.md:\n\n${state.techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system, appendToLastAgent, [], AGENTS.GOVERNING.model)
+      const cost = calcCost(AGENTS.GOVERNING.model, r.inputTokens, r.outputTokens)
+      setSessionRunCost(c => c + cost)
+      const outputFlag = scanOutput(r.text)
+      await logPipelineRun({ agentName: "Governance Assessor", model: AGENTS.GOVERNING.model, inputTokens: r.inputTokens, outputTokens: r.outputTokens, latencyMs: r.latencyMs, costUsd: cost, guardrailFlag: !!outputFlag, flagReason: outputFlag || undefined })
+      if (outputFlag) setGuardrailWarning(outputFlag)
+      let governanceMd = r.text
+      if (r.text.includes("READY FOR GOVERNANCE.MD")) {
+        governanceMd = r.text.split("## READY FOR GOVERNANCE.MD")[1]?.split("## EVIDENCE PACK")[0]?.trim() || r.text
       }
       setState(s => ({ ...s, governanceMd, stage: "COMPLETE" }))
       addMessage("system", "All 3 agents complete. Review documents and register the project.")
@@ -499,9 +647,12 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         pushAgentMsg()
         const system = `You are Agent 1 - Product Scoper. The user has feedback. Incorporate it and produce the revised document. End with:\n## READY FOR PRODUCT.MD\n[updated document starting with # Project Name]`
         try {
-          const text = await streamClaude(msg, system, appendToLastAgent, [{ role: "assistant", content: state.messages.filter(m => m.role === "agent").slice(-1)[0]?.content || "" }])
-          if (text.includes("READY FOR PRODUCT.MD")) {
-            setState(s => ({ ...s, productMd: text.split("## READY FOR PRODUCT.MD")[1]?.trim() || text, stage: "AWAITING_USER_SCOPE" }))
+          const r = await streamClaude(msg, system, appendToLastAgent, [{ role: "assistant", content: state.messages.filter(m => m.role === "agent").slice(-1)[0]?.content || "" }])
+          const cost = calcCost("claude-sonnet-4-6", r.inputTokens, r.outputTokens)
+          setSessionRunCost(c => c + cost)
+          await logPipelineRun({ agentName: "Product Scoper (revision)", model: "claude-sonnet-4-6", inputTokens: r.inputTokens, outputTokens: r.outputTokens, latencyMs: r.latencyMs, costUsd: cost, guardrailFlag: false })
+          if (r.text.includes("READY FOR PRODUCT.MD")) {
+            setState(s => ({ ...s, productMd: r.text.split("## READY FOR PRODUCT.MD")[1]?.trim() || r.text, stage: "AWAITING_USER_SCOPE" }))
             addMessage("system", "product.md updated. Type 'approve' to continue or request more changes.")
           }
         } catch (e: any) { addMessage("system", `Error: ${e.message}`) }
@@ -514,9 +665,12 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         pushAgentMsg()
         const system = `You are Agent 2 - Tech Architect. The user has feedback. Incorporate it using only approved tools (Next.js, Payload CMS, Supabase, Vercel, GitHub, Claude Code). End with:\n## READY FOR TECHSTACK.MD\n[updated document]`
         try {
-          const text = await streamClaude(msg, system, appendToLastAgent)
-          if (text.includes("READY FOR TECHSTACK.MD")) {
-            setState(s => ({ ...s, techstackMd: text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || text, stage: "AWAITING_USER_ARCH" }))
+          const r = await streamClaude(msg, system, appendToLastAgent)
+          const cost = calcCost("claude-sonnet-4-6", r.inputTokens, r.outputTokens)
+          setSessionRunCost(c => c + cost)
+          await logPipelineRun({ agentName: "Tech Architect (revision)", model: "claude-sonnet-4-6", inputTokens: r.inputTokens, outputTokens: r.outputTokens, latencyMs: r.latencyMs, costUsd: cost, guardrailFlag: false })
+          if (r.text.includes("READY FOR TECHSTACK.MD")) {
+            setState(s => ({ ...s, techstackMd: r.text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || r.text, stage: "AWAITING_USER_ARCH" }))
             addMessage("system", "techstack.md updated. Type 'approve' to continue or request more changes.")
           }
         } catch (e: any) { addMessage("system", `Error: ${e.message}`) }
@@ -566,7 +720,6 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
   const currentAgentKey = stageNum === 1 ? "SCOPING" : stageNum === 2 ? "ARCHITECTING" : stageNum === 3 ? "GOVERNING" : null
   const currentAgent = currentAgentKey ? AGENTS[currentAgentKey as keyof typeof AGENTS] : null
 
-  // Auto mode step statuses
   const autoStep1 = stageNum >= 1 ? (stageNum > 1 ? "done" : "running") : "waiting"
   const autoStep2 = stageNum >= 2 ? (stageNum > 2 ? "done" : "running") : "waiting"
   const autoStep3 = stageNum >= 3 ? (state.stage === "COMPLETE" ? "done" : "running") : "waiting"
@@ -575,23 +728,30 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
     <div className="content">
       <div className="page-head">
         <div><h1>Build pipeline</h1><p>3 AI agents take your idea from concept to governed project</p></div>
-        <Link href="/projects"><button className="btn btn-ghost btn-sm">All projects</button></Link>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {sessionRunCost > 0 && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--g600)", background: "var(--g50)", padding: "4px 10px", borderRadius: 8, border: "1px solid var(--g200)" }}>
+              Session cost: ${sessionRunCost.toFixed(4)}
+            </div>
+          )}
+          <Link href="/projects"><button className="btn btn-ghost btn-sm">All projects</button></Link>
+        </div>
       </div>
 
-      {showKeyInput && (
-        <div className="card">
-          <div className="card-head"><h3>Anthropic API key required</h3></div>
-          <div className="card-body">
-            <div style={{ fontSize: 12, color: "var(--g700)", marginBottom: 10 }}>Powers the 3 AI agents. Used in-browser only, never stored.</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="form-input" type="password" placeholder="sk-ant-..." value={apiKey} onChange={e => { setApiKey(e.target.value); localStorage.setItem("anthropic_api_key", e.target.value) }} style={{ flex: 1, margin: 0 }} />
-              <button className="btn btn-org" disabled={!apiKey} onClick={() => { setShowKeyInput(false); if (userInput) startPipeline() }}>Start</button>
-            </div>
+      {/* Guardrail warning — non-blocking banner */}
+      {guardrailWarning && (
+        <div style={{ padding: "10px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+          <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: "#dc2626", fill: "none", strokeWidth: 2, flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#dc2626" }}>Security flag (advisory) — </span>
+            <span style={{ fontSize: 12, color: "#7f1d1d" }}>{guardrailWarning}</span>
           </div>
+          <button onClick={() => setGuardrailWarning(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#dc2626", padding: "0 4px" }}>×</button>
         </div>
       )}
 
-      {/* Lifecycle checklist — always shown at IDLE, advisory only */}
+
+      {/* Lifecycle checklist */}
       {state.stage === "IDLE" && (() => {
         const checked = LIFECYCLE_STAGES.filter(s => lifecycle[s.key]).length
         const pct = Math.round((checked / LIFECYCLE_STAGES.length) * 100)
@@ -629,27 +789,20 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         )
       })()}
 
-      {/* Mode selector — shown only at IDLE before mode chosen */}
+      {/* Mode selector */}
       {state.stage === "IDLE" && mode === null && (
         <div className="card">
           <div className="card-head"><h3>Choose your pipeline mode</h3></div>
           <div className="card-body" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {/* AUTO MODE */}
             <button
               onClick={() => setMode("AUTO")}
-              style={{
-                all: "unset", cursor: "pointer", display: "block",
-                border: "2px solid var(--g100)", borderRadius: 12, padding: 20,
-                background: "white", transition: "all 0.2s",
-              }}
+              style={{ all: "unset", cursor: "pointer", display: "block", border: "2px solid var(--g100)", borderRadius: 12, padding: 20, background: "white", transition: "all 0.2s" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "#7c3aed"; (e.currentTarget as HTMLElement).style.background = "#faf5ff" }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--g100)"; (e.currentTarget as HTMLElement).style.background = "white" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #7c3aed, #a855f7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, stroke: "white", fill: "none", strokeWidth: 2, strokeLinecap: "round" }}>
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                  </svg>
+                  <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, stroke: "white", fill: "none", strokeWidth: 2, strokeLinecap: "round" }}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
                 </div>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "var(--g900)" }}>Auto mode</div>
@@ -669,14 +822,9 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
               </div>
             </button>
 
-            {/* MANUAL MODE */}
             <button
               onClick={() => setMode("MANUAL")}
-              style={{
-                all: "unset", cursor: "pointer", display: "block",
-                border: "2px solid var(--g100)", borderRadius: 12, padding: 20,
-                background: "white", transition: "all 0.2s",
-              }}
+              style={{ all: "unset", cursor: "pointer", display: "block", border: "2px solid var(--g100)", borderRadius: 12, padding: 20, background: "white", transition: "all 0.2s" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--org)"; (e.currentTarget as HTMLElement).style.background = "#fff8f0" }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = "var(--g100)"; (e.currentTarget as HTMLElement).style.background = "white" }}
             >
@@ -763,16 +911,10 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                 className="btn"
                 onClick={startPipeline}
                 disabled={!userInput.trim()}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  background: mode === "AUTO" ? "#7c3aed" : "var(--org)",
-                  color: "white", border: "none",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: 8, background: mode === "AUTO" ? "#7c3aed" : "var(--org)", color: "white", border: "none" }}
               >
                 <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: "white", fill: "none", strokeWidth: 2, strokeLinecap: "round" }}>
-                  {mode === "AUTO"
-                    ? <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                    : <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />}
+                  {mode === "AUTO" ? <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /> : <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />}
                 </svg>
                 {mode === "AUTO" ? "Launch AI agent" : "Start pipeline"}
               </button>
@@ -815,7 +957,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                 {autoLog.length === 0 ? (
                   <div style={{ fontSize: 11, color: "var(--g400)", fontStyle: "italic" }}>Starting...</div>
                 ) : autoLog.map((line, i) => (
-                  <div key={i} style={{ fontSize: 11, color: line.startsWith("✓") ? "var(--grn)" : line.startsWith("✗") ? "#dc2626" : "var(--g700)", marginBottom: 4, fontFamily: "monospace" }}>{line}</div>
+                  <div key={i} style={{ fontSize: 11, color: line.startsWith("✓") ? "var(--grn)" : line.startsWith("✗") ? "#dc2626" : line.startsWith("⚠") ? "#d97706" : line.startsWith("↑") ? "#7c3aed" : "var(--g700)", marginBottom: 4, fontFamily: "monospace" }}>{line}</div>
                 ))}
               </div>
             </div>
@@ -827,6 +969,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                   <a href={`/projects/detail?id=${state.projectId}`}><button className="btn btn-org" style={{ fontSize: 12 }}>View project</button></a>
                   <a href="/approvals"><button className="btn btn-ghost" style={{ fontSize: 12 }}>View approvals</button></a>
+                  <a href="/observability"><button className="btn btn-ghost" style={{ fontSize: 12 }}>View observability</button></a>
                 </div>
               </div>
             )}
@@ -889,7 +1032,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         </div>
       )}
 
-      {/* Generated documents (both modes) */}
+      {/* Generated documents */}
       {(state.productMd || state.techstackMd || state.governanceMd) && (
         <div className="card">
           <div className="card-head"><h3>Generated documents</h3><span style={{ fontSize: 11, color: "var(--g500)" }}>Saved to library on registration</span></div>
@@ -938,7 +1081,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         </div>
       )}
 
-      {/* Scorecard — shown after COMPLETE for both modes */}
+      {/* Scorecard */}
       {state.stage === "COMPLETE" && state.productMd && (() => {
         const sc = computeScorecard(state.productMd, state.techstackMd, state.governanceMd)
         const scoreColor = sc.overallScore >= 80 ? "var(--grn)" : sc.overallScore >= 50 ? "var(--org)" : "#dc2626"
@@ -946,7 +1089,10 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
           <div className="card">
             <div className="card-head">
               <h3>Run scorecard</h3>
-              <span style={{ fontSize: 11, color: "var(--g500)" }}>Evidence quality assessment</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {sessionRunCost > 0 && <span style={{ fontSize: 11, color: "var(--g500)" }}>Total cost: ${sessionRunCost.toFixed(4)}</span>}
+                <Link href="/observability"><button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>View observability →</button></Link>
+              </div>
             </div>
             <div className="card-body">
               <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 20, alignItems: "center" }}>
