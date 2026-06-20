@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
 
-type EventType = "PIPELINE_RUN" | "MEMORY_CAPTURE" | "DEBUG_SESSION" | "APPROVAL"
+type EventType = "PIPELINE_RUN" | "MEMORY_CAPTURE" | "DEBUG_SESSION"
 
 interface AuditEvent {
   id: string
@@ -18,7 +18,6 @@ const TYPE_CONFIG: Record<EventType, { label: string; color: string; dot: string
   PIPELINE_RUN:   { label: "Pipeline run",    color: "#1d4ed8", dot: "#3b82f6" },
   MEMORY_CAPTURE: { label: "Memory captured", color: "#166534", dot: "var(--grn)" },
   DEBUG_SESSION:  { label: "Debug session",   color: "#92400e", dot: "var(--org)" },
-  APPROVAL:       { label: "Approval",        color: "#6b21a8", dot: "#a855f7" },
 }
 
 const FILTERS: { value: string; label: string }[] = [
@@ -26,7 +25,6 @@ const FILTERS: { value: string; label: string }[] = [
   { value: "PIPELINE_RUN", label: "Pipeline runs" },
   { value: "MEMORY_CAPTURE", label: "Memory captures" },
   { value: "DEBUG_SESSION", label: "Debug sessions" },
-  { value: "APPROVAL", label: "Approvals" },
 ]
 
 export default function AuditPage() {
@@ -41,8 +39,7 @@ export default function AuditPage() {
       sb.from("PipelineRun").select("id, projectName, mode, riskLevel, totalCostUsd, createdAt, createdById").order("createdAt", { ascending: false }).limit(100),
       sb.from("Memory").select("id, type, title, createdAt, createdById").order("createdAt", { ascending: false }).limit(100),
       sb.from("DebugSession").select("id, title, status, createdAt, createdById").order("createdAt", { ascending: false }).limit(100),
-      sb.from("Approval").select("id, status, createdAt, reviewedById, project:projectId(name)").order("createdAt", { ascending: false }).limit(100),
-    ]).then(([runs, mems, dbg, approvals]) => {
+    ]).then(([runs, mems, dbg]) => {
       const all: AuditEvent[] = []
 
       ;(runs.data || []).forEach((r: any) => all.push({
@@ -70,15 +67,6 @@ export default function AuditPage() {
         detail: `Status: ${d.status}`,
         actor: d.createdById || null,
         ts: d.createdAt,
-      }))
-
-      ;(approvals.data || []).forEach((a: any) => all.push({
-        id: "apv-" + a.id,
-        type: "APPROVAL",
-        title: (a.project as any)?.name || "Approval",
-        detail: `Status: ${a.status}`,
-        actor: a.reviewedById || null,
-        ts: a.createdAt,
       }))
 
       all.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
