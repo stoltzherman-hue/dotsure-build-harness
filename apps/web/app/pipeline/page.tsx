@@ -166,7 +166,7 @@ function PipelineInner() {
     latencyMs: number; costUsd: number; guardrailFlag: boolean; flagReason?: string
   }) => {
     try {
-      await fetch("/api/log-run", {
+      const res = await fetch("/api/log-run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -176,7 +176,13 @@ function PipelineInner() {
           guardrailFlag: opts.guardrailFlag, flagReason: opts.flagReason || null,
         }),
       })
-    } catch {}
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        appendAutoLog(`⚠ Observability log error: ${err.error}`)
+      }
+    } catch (e: any) {
+      appendAutoLog(`⚠ Observability log failed: ${e.message}`)
+    }
   }
 
   // ─── STREAM CLAUDE (returns tokens + latency) ─────────────────────────────
