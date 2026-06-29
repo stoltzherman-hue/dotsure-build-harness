@@ -189,7 +189,7 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
       )}
 
       <div className="two-col">
-        <div className="card">
+        <div className="card glass-card">
           <div className="card-head"><h3>Project details</h3></div>
           <div style={{ padding: "12px 16px", display: "grid", gap: 10 }}>
             {[
@@ -209,7 +209,7 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
             ))}
           </div>
         </div>
-        <div className="card">
+        <div className="card glass-card">
           <div className="card-head"><h3>Risk profile</h3></div>
           <div style={{ padding: "20px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 48, fontWeight: 800, color: riskColor(project.riskTier), lineHeight: 1 }}>{project.riskScore}</div>
@@ -232,7 +232,7 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
       )}
 
       {mockupHtml && (
-        <div className="card">
+        <div className="card glass-card">
           <div className="card-head">
             <div>
               <h3>AI-generated mockup</h3>
@@ -284,7 +284,7 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
         </div>
       )}
       {docs.length > 0 && (
-        <div className="card">
+        <div className="card glass-card">
           <div className="card-head">
             <h3>Project documents</h3>
             <a href="/library" style={{ fontSize: 11, color: "var(--org)", fontWeight: 600 }}>View all in library</a>
@@ -319,7 +319,7 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
           )}
         </div>
       )}
-      <div className="card">
+      <div className="card glass-card">
         <div className="card-head">
           <h3>GitHub scaffold</h3>
           {!scaffoldResult && (
