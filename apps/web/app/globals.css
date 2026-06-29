@@ -191,3 +191,8 @@ select.form-input { cursor: pointer; }
 .two-col > .glass-card:first-child:hover { transform: translateY(1px) scale(0.997); }
 .two-col > .glass-card:last-child { z-index: 1; }
 .glass-card .card-head { border-bottom: 1px solid rgba(0,151,167,0.08); background: rgba(255,255,255,0.40); }
+.card.glass-card {
+  background: rgba(255, 255, 255, 0.60) !important;
+  border: 1px solid rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.95) inset, 0 -1px 0 rgba(0,151,167,0.10) inset !important;
+}
