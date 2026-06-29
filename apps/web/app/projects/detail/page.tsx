@@ -254,6 +254,18 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
           </div>
           {showTokenInput && !scaffoldResult && (
             <div style={{ padding: "12px 16px", background: "var(--g50)", borderBottom: "1px solid var(--g100)" }}>
+              <div style={{ fontSize: 11, color: "var(--g600)", fontWeight: 700, marginBottom: 6 }}>Files included in scaffold:</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+                  <div key={"README.md"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>README.md</div>
+                  <div key={"package.json"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>package.json</div>
+                  <div key={"GOVERNANCE.md"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>GOVERNANCE.md</div>
+                  <div key={"AGENTS.md"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>AGENTS.md</div>
+                  <div key={".gitignore"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>.gitignore</div>
+                  <div key={"src/app/layout.tsx"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>src/app/layout.tsx</div>
+                  <div key={"src/app/page.tsx"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>src/app/page.tsx</div>
+                  <div key={".claude/CLAUDE.md"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>.claude/CLAUDE.md</div>
+                  <div key={".claude/skills/arc-burrow-app/SKILL.md"} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "white", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>.claude/skills/arc-burrow-app/SKILL.md</div>
+              </div>
               <div style={{ fontSize: 11, color: "var(--g700)", marginBottom: 8, fontWeight: 600 }}>GitHub Personal Access Token (repo scope). Used in-browser only, never stored.</div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input className="form-input" type="password" placeholder="ghp_xxxxxxxxxxxx" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={{ flex: 1, margin: 0 }} />
@@ -325,6 +337,7 @@ export default function ProjectDetailPage() {
     </Suspense>
   )
 }
+
 
 
 
