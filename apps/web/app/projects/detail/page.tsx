@@ -132,7 +132,10 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
         "src/app/globals.css": `@tailwind base;\n@tailwind components;\n@tailwind utilities;\n`,
         "src/app/page.tsx": `export default function Home() { return <main className="min-h-screen p-8 bg-gray-50"><div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 p-8"><span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full">${project.projectCode}</span><h1 className="text-3xl font-bold text-gray-900 mt-4 mb-2">${project.name}</h1><p className="text-gray-500">${project.department} | Dotsure AI Build Harness</p></div></main> }\n`,
         ".gitignore": `.env.local\nnode_modules/\n.next/\nout/\n`,
-        "GOVERNANCE.md": `# Governance\n\nProject: ${project.projectCode}\nDepartment: ${project.department}\nGenerated: ${new Date().toISOString()}\n\nAll deployments require 4-gate approval at https://dotsure-build-harness.netlify.app/deployments\n`,
+        "GOVERNANCE.md": `# Governance\n\nProject: ${project.projectCode}\nDepartment: ${project.department}\nGenerated: ${new Date().toISOString()}\n\nAll deployments require 4-gate approval at https://dotsure-build-harness.vercel.app/deployments\n`,
+        "AGENTS.md": `# ARC Burrow Agent Entrypoint\n\nThis repository is an ARC Burrow application repository.\n\nControl repository: https://github.com/dylanparctesting007-cyber/arc-burrow\n\nProject: ${project.projectCode} - ${project.name}\nDepartment: ${project.department}\nGovernance platform: https://dotsure-build-harness.vercel.app\n\n## Non-negotiable controls\n\n- Do not self-approve generated work.\n- Do not deploy without explicit human approval via the governance platform.\n- Humans approve material decisions. Agents prepare evidence.\n- Do not commit production secrets or real environment values.\n- Do not treat preview deployment success as production approval.\n`,
+        ".claude/CLAUDE.md": `# ARC Burrow App Adapter\n\nThis is an ARC Burrow application repository for ${project.name}.\n\nBefore writing any code, read AGENTS.md.\n\nControl repository: https://github.com/dylanparctesting007-cyber/arc-burrow\nGovernance platform: https://dotsure-build-harness.vercel.app\nProject code: ${project.projectCode}\n`,
+        ".claude/skills/arc-burrow-app/SKILL.md": `# ARC Burrow App Skill\n\nThis repository is governed by ARC Burrow.\n\n## Rules\n\n1. Read AGENTS.md before any task.\n2. Do not write application code without an approved spec from the governance platform.\n3. Do not deploy without 4-gate approval at https://dotsure-build-harness.vercel.app/deployments\n4. Do not self-approve. Humans approve material decisions.\n5. All evidence packs must reference project ${project.projectCode}.\n\n## Control repository\n\nhttps://github.com/dylanparctesting007-cyber/arc-burrow\n`,
       }
       for (const [filePath, content] of Object.entries(files)) {
         await fetch(`https://api.github.com/repos/${repo.full_name}/contents/${filePath}`, {
@@ -322,5 +325,6 @@ export default function ProjectDetailPage() {
     </Suspense>
   )
 }
+
 
 
