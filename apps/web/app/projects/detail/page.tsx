@@ -321,6 +321,40 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
           )}
         </div>
       )}
+      <div className="card">
+        <div className="card-head">
+          <h3>GitHub scaffold</h3>
+          {!scaffoldResult && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowTokenInput(t => !t)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: "currentColor", fill: "none", strokeWidth: 2, strokeLinecap: "round" }}><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22" /></svg>
+              Create GitHub repo
+            </button>
+          )}
+          {scaffoldResult && <a href={scaffoldResult.repoUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">View repo</a>}
+        </div>
+        {showTokenInput && !scaffoldResult && (
+          <div style={{ padding: "12px 16px" }}>
+            <div style={{ fontSize: 11, color: "var(--g600)", fontWeight: 700, marginBottom: 6 }}>Files included in scaffold:</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+              {["README.md","package.json","GOVERNANCE.md","AGENTS.md",".gitignore","src/app/layout.tsx","src/app/page.tsx",".claude/CLAUDE.md",".claude/skills/arc-burrow-app/SKILL.md"].map(f => (
+                <div key={f} style={{ fontSize: 10, color: "var(--g700)", fontFamily: "monospace", background: "var(--g50)", padding: "3px 8px", borderRadius: 4, border: "1px solid var(--g100)" }}>{f}</div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--g700)", marginBottom: 8, fontWeight: 600 }}>GitHub Personal Access Token (repo scope). Used in-browser only, never stored.</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input className="form-input" type="password" placeholder="ghp_xxxxxxxxxxxx" value={githubToken} onChange={e => setGithubToken(e.target.value)} style={{ flex: 1, margin: 0 }} />
+              <button className="btn btn-org" onClick={createScaffold} disabled={scaffolding || !githubToken}>{scaffolding ? "Creating..." : "Create repo and scaffold"}</button>
+            </div>
+            {scaffoldError && <div style={{ fontSize: 11, color: "var(--red)", marginTop: 8 }}>Error: {scaffoldError}</div>}
+          </div>
+        )}
+        {scaffoldResult && (
+          <div className="card-body">
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#166534", marginBottom: 8 }}>Repository created with arc-burrow adapter files.</div>
+            <a href={scaffoldResult.repoUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">View GitHub repo</a>
+          </div>
+        )}
+      </div>
       <DependencyPanel projectId={id} />
       <div style={{ marginTop: 16 }}>
         <RequestApprovalButton projectId={id} projectName={project.name} currentStatus={project.status} />
@@ -337,6 +371,7 @@ export default function ProjectDetailPage() {
     </Suspense>
   )
 }
+
 
 
 
