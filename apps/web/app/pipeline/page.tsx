@@ -395,7 +395,7 @@ Structure:
 
     let governanceMd = ""
     try {
-      const r3 = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model, 8000)
+      const r3 = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model, 16000)
       const cost3 = calcCost(AGENTS.GOVERNING.model, r3.inputTokens, r3.outputTokens)
       setSessionRunCost(c => c + cost3)
       const outputFlag3 = scanOutput(r3.text)
@@ -613,7 +613,7 @@ Structure your response:
 
 IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
     try {
-      const r = await streamClaude(`product.md:\n\n${state.productMd}\n\ntechstack.md:\n\n${state.techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system, appendToLastAgent, [], AGENTS.GOVERNING.model, 8000)
+      const r = await streamClaude(`product.md:\n\n${state.productMd}\n\ntechstack.md:\n\n${state.techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system, appendToLastAgent, [], AGENTS.GOVERNING.model, 16000)
       const cost = calcCost(AGENTS.GOVERNING.model, r.inputTokens, r.outputTokens)
       setSessionRunCost(c => c + cost)
       const outputFlag = scanOutput(r.text)
