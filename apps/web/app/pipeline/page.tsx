@@ -154,6 +154,14 @@ function PipelineInner() {
     } catch { return [] }
   }
 
+  const getCompanyContext = async (): Promise<string> => {
+    try {
+      const sb = createClient()
+      const { data } = await sb.from("CompanyContext").select("content").order("updatedAt", { ascending: false }).limit(1).single()
+      return data?.content ? `\n\nCOMPANY CONTEXT (verified facts - treat as established, do not re-raise as unknowns):\n${data.content}` : ""
+    } catch { return "" }
+  }
+
   const buildMemoryBlock = (memories: { type: string; title: string; content: string }[]) => {
     if (!memories.length) return ""
     return `\n\n## INSTITUTIONAL KNOWLEDGE\nThe following lessons from previous Dotsure projects are relevant to this prompt:\n${memories.map(m => `[${m.type}] ${m.title}: ${m.content}`).join("\n")}`
@@ -286,7 +294,8 @@ NON-NEGOTIABLE AGENT CONTROLS (from ARC Harness Engineering governance):
 
     // Retrieve relevant memories for context
     const memories = await scoreMemories(prompt)
-    const memBlock = buildMemoryBlock(memories)
+    const companyContext = await getCompanyContext()
+    const memBlock = buildMemoryBlock(memories) + companyContext
     if (memories.length) appendAutoLog(`↑ ${memories.length} institutional memory match${memories.length > 1 ? "es" : ""} injected`)
 
     appendAutoLog("Agent 1 - Product Scoper starting...")
@@ -495,7 +504,8 @@ Structure:
     addMessage("system", "Agent 1 - Product Scoper is analysing your idea...")
     pushAgentMsg()
     const memories = await scoreMemories(prompt)
-    const memBlock = buildMemoryBlock(memories)
+    const companyContext = await getCompanyContext()
+    const memBlock = buildMemoryBlock(memories) + companyContext
     const system = `You are Agent 1 - Product Scoper for the Dotsure AI Build Harness. You are a senior product manager specialising in South African insurance technology.
 ${GUARDRAILS}${memBlock}
 
@@ -538,7 +548,8 @@ Be conversational and thorough. Show your reasoning. Think out loud.`
     addMessage("system", "Agent 2 - Tech Architect is designing your solution...")
     pushAgentMsg()
     const memories = await scoreMemories(productContent || state.productMd)
-    const memBlock = buildMemoryBlock(memories)
+    const companyContext = await getCompanyContext()
+    const memBlock = buildMemoryBlock(memories) + companyContext
     const system = `You are Agent 2 - Tech Architect for the Dotsure AI Build Harness.
 ${GUARDRAILS}${memBlock}
 
@@ -587,7 +598,8 @@ You MUST always end your response with the following section, even if you have q
     addMessage("system", "Agent 3 - Governance Assessor is evaluating your project...")
     pushAgentMsg()
     const memories = await scoreMemories(state.productMd + " " + state.techstackMd)
-    const memBlock = buildMemoryBlock(memories)
+    const companyContext = await getCompanyContext()
+    const memBlock = buildMemoryBlock(memories) + companyContext
     const system = `You are Agent 3 - Governance Assessor for the Dotsure AI Build Harness. Senior GRC specialist for SA insurance technology.
 ${GUARDRAILS}${memBlock}
 
