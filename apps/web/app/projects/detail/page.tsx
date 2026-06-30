@@ -14,6 +14,7 @@ interface Project {
 }
 
 const riskColor = (t: string) => ({ LOW:"var(--grn)", MEDIUM:"var(--amb)", HIGH:"var(--red)", CRITICAL:"var(--red-dk)" }[t] || "var(--g500)")
+const escalationPath = (t: string) => ({ LOW:"Committee level", MEDIUM:"Committee level", HIGH:"Escalate to Exco", CRITICAL:"Escalate to ARC / Board" }[t] || "Committee level")
 const riskBadgeClass = (t: string) => ({ LOW:"badge-low", MEDIUM:"badge-medium", HIGH:"badge-high", CRITICAL:"badge-critical" }[t] || "badge-pending")
 const statusBadgeClass = (s: string) => ({ REGISTERED:"badge-org", IN_ASSESSMENT:"badge-warn", APPROVED:"badge-ok", BUILDING:"badge-pur", LIVE:"badge-ok", REJECTED:"badge-fail" }[s] || "badge-pending")
 
@@ -215,6 +216,7 @@ CRITICAL: Return ONLY raw HTML. No markdown, no explanation, no code fences. Sta
             <div style={{ fontSize: 48, fontWeight: 800, color: riskColor(project.riskTier), lineHeight: 1 }}>{project.riskScore}</div>
             <div style={{ fontSize: 11, color: "var(--g500)", marginBottom: 12 }}>Risk score / 100</div>
             <span className={"badge " + riskBadgeClass(project.riskTier)} style={{ fontSize: 13, padding: "4px 12px" }}>{project.riskTier} RISK</span>
+            <div style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: "var(--g700)" }}>{escalationPath(project.riskTier)}</div>
           </div>
           {project.businessProblem && (
             <div style={{ padding: "0 16px 16px" }}>
