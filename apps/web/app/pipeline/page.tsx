@@ -405,21 +405,36 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
 [evidence pack document]`
 
     let governanceMd = ""
+    let evidencePackMd = ""
     try {
-      const r3 = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md and evidence pack.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model, 32000)
-      const cost3 = calcCost(AGENTS.GOVERNING.model, r3.inputTokens, r3.outputTokens)
-      setSessionRunCost(c => c + cost3)
-      const outputFlag3 = scanOutput(r3.text)
-      await logPipelineRun({ agentName: "Governance Assessor", model: AGENTS.GOVERNING.model, inputTokens: r3.inputTokens, outputTokens: r3.outputTokens, latencyMs: r3.latencyMs, costUsd: cost3, guardrailFlag: !!outputFlag3, flagReason: outputFlag3 || undefined })
-      appendAutoLog(`✓ governance.md — ${r3.inputTokens}in/${r3.outputTokens}out tokens · $${cost3.toFixed(4)} · ${(r3.latencyMs/1000).toFixed(1)}s`)
-      if (outputFlag3) { appendAutoLog(`⚠ Output scan: ${outputFlag3}`); setGuardrailWarning(outputFlag3) }
-      if (r3.text.includes("READY FOR GOVERNANCE.MD")) {
-        governanceMd = r3.text.split("## READY FOR GOVERNANCE.MD")[1]?.split("## EVIDENCE PACK")[0]?.trim() || r3.text
-      } else { governanceMd = r3.text }
-      setState(s => ({ ...s, governanceMd, stage: "COMPLETE" }))
-      appendAutoLog("✓ governance.md + evidence pack generated")
+      const r3a = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md only. Do not produce an evidence pack in this call.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model, 16000)
+      const cost3a = calcCost(AGENTS.GOVERNING.model, r3a.inputTokens, r3a.outputTokens)
+      setSessionRunCost(c => c + cost3a)
+      const outputFlag3a = scanOutput(r3a.text)
+      await logPipelineRun({ agentName: "Governance Assessor", model: AGENTS.GOVERNING.model, inputTokens: r3a.inputTokens, outputTokens: r3a.outputTokens, latencyMs: r3a.latencyMs, costUsd: cost3a, guardrailFlag: !!outputFlag3a, flagReason: outputFlag3a || undefined })
+      appendAutoLog(`✓ governance.md — ${r3a.inputTokens}in/${r3a.outputTokens}out tokens · ${cost3a.toFixed(4)} · ${(r3a.latencyMs/1000).toFixed(1)}s`)
+      if (outputFlag3a) { appendAutoLog(`⚠ Output scan: ${outputFlag3a}`); setGuardrailWarning(outputFlag3a) }
+      if (r3a.text.includes("READY FOR GOVERNANCE.MD")) {
+        governanceMd = r3a.text.split("## READY FOR GOVERNANCE.MD")[1]?.trim() || r3a.text
+      } else { governanceMd = r3a.text }
     } catch (e: any) {
       appendAutoLog(`✗ Agent 3 error: ${e.message}`)
+      setAutoStatus("idle")
+      return
+    }
+    try {
+      appendAutoLog("Agent 4 - Evidence Pack Compiler starting...")
+      const systemEP = "You are the Evidence Pack Compiler for the Dotsure AI Build Harness. Your sole job is to produce a comprehensive governance evidence pack. You have been given product.md, techstack.md, and governance.md. Produce ONLY the evidence pack. Do not repeat the governance document. Include: (1) Assessment basis and traceability, (2) Regulatory classification evidence, (3) Risk register with source traceability, (4) POPIA compliance evidence inventory, (5) Actuarial evidence requirements, (6) Technical governance evidence, (7) Sign-off register template, (8) Outstanding items tracker. This is a regulated document for ARC and Board review."
+      const r3b = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\ngovernance.md:\n\n${governanceMd}\n\nProduce the evidence pack.`, systemEP, appendToLastAgent, [], AGENTS.GOVERNING.model, 16000)
+      const cost3b = calcCost(AGENTS.GOVERNING.model, r3b.inputTokens, r3b.outputTokens)
+      setSessionRunCost(c => c + cost3b)
+      await logPipelineRun({ agentName: "Evidence Pack Compiler", model: AGENTS.GOVERNING.model, inputTokens: r3b.inputTokens, outputTokens: r3b.outputTokens, latencyMs: r3b.latencyMs, costUsd: cost3b, guardrailFlag: false })
+      appendAutoLog(`✓ evidence-pack.md — ${r3b.inputTokens}in/${r3b.outputTokens}out tokens · ${cost3b.toFixed(4)} · ${(r3b.latencyMs/1000).toFixed(1)}s`)
+      evidencePackMd = r3b.text
+      setState(s => ({ ...s, governanceMd, stage: "COMPLETE" }))
+      appendAutoLog("✓ All 4 documents complete")
+    } catch (e: any) {
+      appendAutoLog(`✗ Evidence pack error: ${e.message}`)
       setAutoStatus("idle")
       return
     }
@@ -453,8 +468,7 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
 
       if (!project) throw new Error("Failed to create project")
 
-      const allAgentText = stateRef.current.messages.filter(m => m.role === "agent").map(m => m.content).join("\n\n---\n\n")
-      const evidencePack = allAgentText.includes("EVIDENCE PACK") ? allAgentText.split("## EVIDENCE PACK")[1]?.trim() || "" : ""
+      const evidencePack = evidencePackMd || ""
 
       const docs = [
         { filename: "product.md", content: productMd || "No content", generatedBy: "agent-1" },
