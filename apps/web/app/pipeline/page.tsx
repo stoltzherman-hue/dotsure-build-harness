@@ -305,14 +305,14 @@ ${GUARDRAILS}${memBlock}
 
 Your job: deeply understand the idea, research the problem space, define clear requirements, self-audit, produce product.md.
 
-Structure your response:
-## Understanding your idea
-## Research & context
+OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+## Understanding Your Idea
+## Market & Regulatory Context
 ## Requirements
-## Assumptions & unknowns
-## Self-audit (what gaps remain, confidence level)
+## Assumptions & Unknowns
+## Self-Audit
 ## READY FOR PRODUCT.MD
-[full markdown document starting with # Project Name]
+[full product.md document — must begin with # [Project Name]]
 
 Always end with the READY FOR PRODUCT.MD section with the full document.`
 
@@ -351,14 +351,14 @@ APPROVED STACK AT DOTSURE:
 
 Your job: read product.md, propose optimal stack from approved tools, justify each choice, flag gaps, self-audit.
 
-Structure:
-## Architecture analysis
-## Proposed stack
-## Gaps & risks
+OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+## Architecture Analysis
+## Proposed Stack
+## Gaps & Risks
 ## Assumptions
-## Self-audit
+## Self-Audit
 ## READY FOR TECHSTACK.MD
-[full markdown document]
+[full techstack.md document]
 
 Always end with READY FOR TECHSTACK.MD.`
 
@@ -391,14 +391,14 @@ Your job: assess regulatory exposure, technical complexity, determine build path
 
 MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW — not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
 
-Structure:
-## Regulatory assessment (POPIA, FAIS, PPR, TCF, Insurance Act)
-## Risk classification (LOW/MEDIUM/HIGH/CRITICAL with justification)
-## Complexity assessment
-## Build path recommendation
-## Human oversight requirements
-## Dependencies & conditions
-## Production bridge checklist
+OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+## Regulatory Assessment
+## Risk Classification
+## Complexity Assessment
+## Build Path Recommendation
+## Human Oversight Requirements
+## Dependencies & Conditions
+## Production Bridge Checklist
 ## READY FOR GOVERNANCE.MD
 [governance.md document]
 ## EVIDENCE PACK
@@ -513,17 +513,17 @@ ${GUARDRAILS}${memBlock}
 
 Your job: deeply understand the idea, research the problem space, define clear requirements, self-audit, then produce product.md.
 
-Structure your response:
-## Understanding your idea
-## Research & context
+OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+## Understanding Your Idea
+## Market & Regulatory Context
 ## Requirements
-## Assumptions & unknowns
-## Self-audit (what gaps remain, confidence level)
+## Assumptions & Unknowns
+## Self-Audit
 Then EITHER ask ONE clarifying question if truly needed OR write:
 ## READY FOR PRODUCT.MD
-[full markdown document starting with # Project Name]
+[full product.md document — must begin with # [Project Name]]
 
-Be conversational and thorough. Show your reasoning. Think out loud.`
+Be thorough and show your reasoning. Think out loud.`
     try {
       const r = await streamClaude(prompt, system, appendToLastAgent, [], AGENTS.SCOPING.model)
       const cost = calcCost(AGENTS.SCOPING.model, r.inputTokens, r.outputTokens)
@@ -565,15 +565,15 @@ APPROVED STACK AT DOTSURE:
 
 Your job: read product.md, propose optimal stack from approved tools, justify each choice, flag gaps, self-audit.
 
-Structure:
-## Architecture analysis
-## Proposed stack (approved tools only, justify each)
-## Gaps & risks (anything not covered by approved tools)
+OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+## Architecture Analysis
+## Proposed Stack
+## Gaps & Risks
 ## Assumptions
-## Self-audit (confidence level, what you would verify)
+## Self-Audit
 You MUST always end your response with the following section, even if you have questions:
 ## READY FOR TECHSTACK.MD
-[full markdown document]`
+[full techstack.md document]`
     try {
       const r = await streamClaude(`Here is the product requirements:\n\n${productContent || state.productMd}\n\nArchitect the technical solution based on these requirements.`, system, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
       const cost = calcCost(AGENTS.ARCHITECTING.model, r.inputTokens, r.outputTokens)
@@ -614,14 +614,14 @@ Build paths (INFORMATIVE ONLY - never blocks progress):
 - IT-ASSISTED: Needs IT support but not full ARC
 - ARC-REQUIRED: Full Architecture Review Committee needed (flag as dependency only)
 
-Structure your response:
-## Regulatory assessment (POPIA, FAIS, PPR, TCF, Insurance Act)
-## Risk classification (LOW/MEDIUM/HIGH/CRITICAL with justification)
-## Complexity assessment
-## Build path recommendation with reasoning
-## Human oversight requirements (what decisions need human sign-off)
-## Dependencies & conditions
-## Production bridge checklist (monitoring, rollback plan, data classification, environment)
+OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+## Regulatory Assessment
+## Risk Classification
+## Complexity Assessment
+## Build Path Recommendation
+## Human Oversight Requirements
+## Dependencies & Conditions
+## Production Bridge Checklist
 ## READY FOR GOVERNANCE.MD
 [governance.md document]
 ## EVIDENCE PACK
