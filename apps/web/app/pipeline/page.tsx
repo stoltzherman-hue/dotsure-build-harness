@@ -1,4 +1,4 @@
-"use client"
+ï»¿"use client"
 import { useState, useEffect, useRef, Suspense } from "react"
 import { createClient } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
@@ -305,14 +305,14 @@ ${GUARDRAILS}${memBlock}
 
 Your job: deeply understand the idea, research the problem space, define clear requirements, self-audit, produce product.md.
 
-OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Understanding Your Idea
 ## Market & Regulatory Context
 ## Requirements
 ## Assumptions & Unknowns
 ## Self-Audit
 ## READY FOR PRODUCT.MD
-[full product.md document — must begin with # [Project Name]]
+[full product.md document ï¿½ must begin with # [Project Name]]
 
 Always end with the READY FOR PRODUCT.MD section with the full document.`
 
@@ -351,7 +351,7 @@ APPROVED STACK AT DOTSURE:
 
 Your job: read product.md, propose optimal stack from approved tools, justify each choice, flag gaps, self-audit.
 
-OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Architecture Analysis
 ## Proposed Stack
 ## Gaps & Risks
@@ -389,9 +389,9 @@ ${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
 
-MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW — not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
+MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW ï¿½ not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
 
-OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Regulatory Assessment
 ## Risk Classification
 ## Complexity Assessment
@@ -513,7 +513,7 @@ ${GUARDRAILS}${memBlock}
 
 Your job: deeply understand the idea, research the problem space, define clear requirements, self-audit, then produce product.md.
 
-OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Understanding Your Idea
 ## Market & Regulatory Context
 ## Requirements
@@ -521,7 +521,7 @@ OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not 
 ## Self-Audit
 Then EITHER ask ONE clarifying question if truly needed OR write:
 ## READY FOR PRODUCT.MD
-[full product.md document — must begin with # [Project Name]]
+[full product.md document ï¿½ must begin with # [Project Name]]
 
 Be thorough and show your reasoning. Think out loud.`
     try {
@@ -565,7 +565,7 @@ APPROVED STACK AT DOTSURE:
 
 Your job: read product.md, propose optimal stack from approved tools, justify each choice, flag gaps, self-audit.
 
-OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Architecture Analysis
 ## Proposed Stack
 ## Gaps & Risks
@@ -607,14 +607,14 @@ ${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
 
-MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW — not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
+MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW ï¿½ not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
 
 Build paths (INFORMATIVE ONLY - never blocks progress):
 - SELF-BUILD: User can proceed independently with approved tools
 - IT-ASSISTED: Needs IT support but not full ARC
 - ARC-REQUIRED: Full Architecture Review Committee needed (flag as dependency only)
 
-OUTPUT STRUCTURE — use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
+OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Regulatory Assessment
 ## Risk Classification
 ## Complexity Assessment
