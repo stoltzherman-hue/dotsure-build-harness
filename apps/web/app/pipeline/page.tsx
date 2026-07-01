@@ -14,6 +14,9 @@ interface AgentState {
   governanceMd: string
   sessionId: string | null
   projectId: string | null
+  riskTier?: string
+  requiresNewInfra?: boolean
+  canSelfServe?: boolean
 }
 
 const AGENTS = {
@@ -351,18 +354,22 @@ APPROVED STACK AT DOTSURE:
 
 Your job: read product.md, propose optimal stack from approved tools, justify each choice, flag gaps, self-audit.
 
+INFRASTRUCTURE CHECK: Some ideas can be built by the requester themselves right now with tools they already have access to (e.g. a script, an Excel/Power BI workbook, a Word/PowerPoint template, a config change to an existing approved system). Others require standing up new company infrastructure - a new hosted application (e.g. a new Vercel project), a new database (e.g. a new Supabase project), or any other new deployed/provisioned resource. Judge this specific idea on that basis.
+
 OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Architecture Analysis
 ## Proposed Stack
 ## Gaps & Risks
 ## Assumptions
 ## Self-Audit
+REQUIRES NEW INFRASTRUCTURE: YES or NO (exactly one word, on its own line, immediately after Self-Audit and before READY FOR TECHSTACK.MD)
 ## READY FOR TECHSTACK.MD
 [full techstack.md document]
 
 Always end with READY FOR TECHSTACK.MD.`
 
     let techstackMd = ""
+    let requiresNewInfra = true
     try {
       const r2 = await streamClaude(`Here is the product requirements:\n\n${productMd}\n\nArchitect the technical solution.`, system2, appendToLastAgent, [], AGENTS.ARCHITECTING.model)
       const cost2 = calcCost(AGENTS.ARCHITECTING.model, r2.inputTokens, r2.outputTokens)
@@ -374,6 +381,8 @@ Always end with READY FOR TECHSTACK.MD.`
       if (r2.text.includes("READY FOR TECHSTACK.MD")) {
         techstackMd = r2.text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || r2.text
       } else { techstackMd = r2.text }
+      const infraMatch = r2.text.match(/REQUIRES NEW INFRASTRUCTURE:\s*(YES|NO)/i)
+      requiresNewInfra = infraMatch ? infraMatch[1].toUpperCase() === "YES" : true
       setState(s => ({ ...s, techstackMd, stage: "GOVERNING" }))
     } catch (e: any) {
       appendAutoLog(`? Agent 2 error: ${e.message}`)
@@ -393,6 +402,7 @@ MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SU
 
 OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Regulatory Assessment
+RISK TIER: LOW, MEDIUM, HIGH, or CRITICAL (exactly one word, on its own line, immediately after this heading) - LOW means an internal tool with no customer data, MEDIUM means an internal tool that touches customer data, HIGH means customer-facing or regulated, CRITICAL means a new insurance product, POPIA special personal data, or something requiring ARC/Board escalation.
 ## Risk Classification
 ## Complexity Assessment
 ## Build Path Recommendation
@@ -400,12 +410,10 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
 ## Dependencies & Conditions
 ## Production Bridge Checklist
 ## READY FOR GOVERNANCE.MD
-[governance.md document]
-## EVIDENCE PACK
-[evidence pack document]`
+[governance.md document]`
 
     let governanceMd = ""
-    let evidencePackMd = ""
+    let riskTier = "MEDIUM"
     try {
       const r3a = await streamClaude(`product.md:\n\n${productMd}\n\ntechstack.md:\n\n${techstackMd}\n\nAssess governance, determine build path, produce governance.md only. Do not produce an evidence pack in this call.`, system3, appendToLastAgent, [], AGENTS.GOVERNING.model, 16000)
       const cost3a = calcCost(AGENTS.GOVERNING.model, r3a.inputTokens, r3a.outputTokens)
@@ -417,11 +425,30 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
       if (r3a.text.includes("READY FOR GOVERNANCE.MD")) {
         governanceMd = r3a.text.split("## READY FOR GOVERNANCE.MD")[1]?.trim() || r3a.text
       } else { governanceMd = r3a.text }
+      const riskMatch = r3a.text.match(/RISK TIER:\s*(LOW|MEDIUM|HIGH|CRITICAL)/i)
+      riskTier = riskMatch ? riskMatch[1].toUpperCase() : "MEDIUM"
     } catch (e: any) {
       appendAutoLog(`? Agent 3 error: ${e.message}`)
       setAutoStatus("idle")
       return
     }
+
+    // Verdict: only a LOW-risk idea that needs no new infrastructure can be
+    // self-served. Anything else stops here and is packaged for stakeholder
+    // approval - so the evidence pack (only needed for that path) is skipped
+    // on a self-serve pass.
+    const canSelfServe = riskTier === "LOW" && !requiresNewInfra
+    setState(s => ({ ...s, governanceMd, stage: "COMPLETE", riskTier, requiresNewInfra, canSelfServe }))
+
+    if (canSelfServe) {
+      appendAutoLog(`? Verdict: LOW risk, no new infrastructure needed - you may build this yourself`)
+      setAutoStatus("done")
+      return
+    }
+
+    appendAutoLog(`? Verdict: ${riskTier} risk${requiresNewInfra ? ", requires new infrastructure" : ""} - packaging documents for stakeholder approval`)
+
+    let evidencePackMd = ""
     try {
       appendAutoLog("Agent 4 - Evidence Pack Compiler starting...")
       const systemEP = "You are the Evidence Pack Compiler for the Dotsure AI Build Harness. Your sole job is to produce a comprehensive governance evidence pack. You have been given product.md, techstack.md, and governance.md. Produce ONLY the evidence pack. Do not repeat the governance document. Include: (1) Assessment basis and traceability, (2) Regulatory classification evidence, (3) Risk register with source traceability, (4) POPIA compliance evidence inventory, (5) Actuarial evidence requirements, (6) Technical governance evidence, (7) Sign-off register template, (8) Outstanding items tracker. This is a regulated document for ARC and Board review."
@@ -431,7 +458,6 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
       await logPipelineRun({ agentName: "Evidence Pack Compiler", model: AGENTS.GOVERNING.model, inputTokens: r3b.inputTokens, outputTokens: r3b.outputTokens, latencyMs: r3b.latencyMs, costUsd: cost3b, guardrailFlag: false })
       appendAutoLog(`? evidence-pack.md � ${r3b.inputTokens}in/${r3b.outputTokens}out tokens � ${cost3b.toFixed(4)} � ${(r3b.latencyMs/1000).toFixed(1)}s`)
       evidencePackMd = r3b.text
-      setState(s => ({ ...s, governanceMd, stage: "COMPLETE" }))
       appendAutoLog("? All 4 documents complete")
     } catch (e: any) {
       appendAutoLog(`? Evidence pack error: ${e.message}`)
@@ -441,7 +467,7 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
 
     appendAutoLog("Registering project and submitting for approval...")
     setAutoStatus("saving")
-    await autoSaveAndSubmit(prompt, productMd, techstackMd, governanceMd, evidencePackMd, session?.id || null)
+    await autoSaveAndSubmit(prompt, productMd, techstackMd, governanceMd, evidencePackMd, session?.id || null, riskTier)
   }
 
   const autoSaveAndSubmit = async (
@@ -450,7 +476,8 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
     techstackMd: string,
     governanceMd: string,
     evidencePackMd: string,
-    sessionId: string | null
+    sessionId: string | null,
+    riskTier: string
   ) => {
     try {
       const sb = createClient()
@@ -459,8 +486,7 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
       const projectCode = `DOT-${year}-${String((count || 0) + 1).padStart(4, "0")}`
       const nameMatch = productMd.match(/^#\s+(.+)$/m)
       const projectName = nameMatch?.[1]?.trim() || prompt.slice(0, 60) || "AI Pipeline Project"
-      const riskTier = governanceMd.includes("ARC-REQUIRED") ? "HIGH" : governanceMd.includes("IT-ASSISTED") ? "MEDIUM" : "LOW"
-      const riskScore = riskTier === "HIGH" ? 75 : riskTier === "MEDIUM" ? 45 : 20
+      const riskScore = riskTier === "CRITICAL" ? 90 : riskTier === "HIGH" ? 70 : riskTier === "MEDIUM" ? 45 : 20
 
       const { data: project } = await sb.from("Project").insert({
         projectCode, name: projectName, projectType: "AI application", department: "Technology",
@@ -994,12 +1020,23 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
               </div>
             </div>
 
-            {autoStatus === "done" && state.projectId && (
+            {autoStatus === "done" && state.canSelfServe && !state.projectId && (
               <div style={{ marginTop: 20, padding: 16, background: "#f0fff4", borderRadius: 10, border: "1px solid #bbf7d0", textAlign: "center" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#166534", marginBottom: 6 }}>Pipeline complete � project registered</div>
-                <div style={{ fontSize: 12, color: "#15803d", marginBottom: 14 }}>Approval request submitted to GM. You'll be notified when a decision is made.</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#166534", marginBottom: 6 }}>You can build this yourself</div>
+                <div style={{ fontSize: 12, color: "#15803d" }}>
+                  Risk tier: LOW, no new infrastructure required. No approval needed - go ahead and build this using Claude Code.
+                </div>
+              </div>
+            )}
+
+            {autoStatus === "done" && !state.canSelfServe && state.projectId && (
+              <div style={{ marginTop: 20, padding: 16, background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", textAlign: "center" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#92400e", marginBottom: 6 }}>This needs approval before you build it</div>
+                <div style={{ fontSize: 12, color: "#a16207", marginBottom: 14 }}>
+                  Risk tier: {state.riskTier}{state.requiresNewInfra ? " and it requires new infrastructure" : ""}. Product, tech stack, governance, and evidence pack documents have been generated - submit them to the relevant stakeholders for sign-off.
+                </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <a href={`/projects/detail?id=${state.projectId}`}><button className="btn btn-org" style={{ fontSize: 12 }}>View project</button></a>
+                  <a href={`/projects/detail?id=${state.projectId}`}><button className="btn btn-org" style={{ fontSize: 12 }}>View documents</button></a>
                   <a href="/approvals"><button className="btn btn-ghost" style={{ fontSize: 12 }}>View approvals</button></a>
                   <a href="/observability"><button className="btn btn-ghost" style={{ fontSize: 12 }}>View observability</button></a>
                 </div>
