@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import { useState, useEffect, useRef, Suspense } from "react"
 import { createClient } from "@/lib/supabase"
 import { useAuth } from "@/contexts/AuthContext"
@@ -17,9 +17,9 @@ interface AgentState {
 }
 
 const AGENTS = {
-  SCOPING:      { name: "Product Scoper",      role: "Agent 1", color: "var(--org)", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",                             desc: "Researches your idea, defines requirements, self-audits",      model: "claude-haiku-4-5-20251001",  modelLabel: "Haiku 4.5 — fast" },
-  ARCHITECTING: { name: "Tech Architect",      role: "Agent 2", color: "var(--grn)", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",                 desc: "Proposes stack, validates against approved catalogue",         model: "claude-sonnet-4-6",          modelLabel: "Sonnet 4.6 — balanced" },
-  GOVERNING:    { name: "Governance Assessor", role: "Agent 3", color: "#7c3aed",    icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",                             desc: "Assesses risk, determines build path, produces evidence pack", model: "claude-sonnet-4-6",          modelLabel: "Sonnet 4.6 — balanced" },
+  SCOPING:      { name: "Product Scoper",      role: "Agent 1", color: "var(--org)", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",                             desc: "Researches your idea, defines requirements, self-audits",      model: "claude-haiku-4-5-20251001",  modelLabel: "Haiku 4.5 � fast" },
+  ARCHITECTING: { name: "Tech Architect",      role: "Agent 2", color: "var(--grn)", icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",                 desc: "Proposes stack, validates against approved catalogue",         model: "claude-sonnet-4-6",          modelLabel: "Sonnet 4.6 � balanced" },
+  GOVERNING:    { name: "Governance Assessor", role: "Agent 3", color: "#7c3aed",    icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",                             desc: "Assesses risk, determines build path, produces evidence pack", model: "claude-sonnet-4-6",          modelLabel: "Sonnet 4.6 � balanced" },
 }
 
 const MODEL_COSTS: Record<string, { inputPer1M: number; outputPer1M: number }> = {
@@ -122,7 +122,7 @@ function PipelineInner() {
 
   const appendAutoLog = (msg: string) => setAutoLog(l => [...l, msg])
 
-  // ─── GUARDRAILS ────────────────────────────────────────────────────────────
+  // --- GUARDRAILS ------------------------------------------------------------
 
   const checkGuardrails = (input: string): string | null => {
     for (const p of INJECTION_PATTERNS) {
@@ -138,7 +138,7 @@ function PipelineInner() {
     return null
   }
 
-  // ─── MEMORY RETRIEVAL ─────────────────────────────────────────────────────
+  // --- MEMORY RETRIEVAL -----------------------------------------------------
 
   const scoreMemories = async (prompt: string): Promise<{ type: string; title: string; content: string }[]> => {
     try {
@@ -167,7 +167,7 @@ function PipelineInner() {
     return `\n\n## INSTITUTIONAL KNOWLEDGE\nThe following lessons from previous Dotsure projects are relevant to this prompt:\n${memories.map(m => `[${m.type}] ${m.title}: ${m.content}`).join("\n")}`
   }
 
-  // ─── OBSERVABILITY: log PipelineRun ──────────────────────────────────────
+  // --- OBSERVABILITY: log PipelineRun --------------------------------------
 
   const logPipelineRun = async (opts: {
     agentName: string; model: string; inputTokens: number; outputTokens: number;
@@ -184,7 +184,7 @@ function PipelineInner() {
     } catch {}
   }
 
-  // ─── STREAM CLAUDE (returns tokens + latency) ─────────────────────────────
+  // --- STREAM CLAUDE (returns tokens + latency) -----------------------------
 
   const streamClaude = async (
     prompt: string,
@@ -281,7 +281,7 @@ NON-NEGOTIABLE AGENT CONTROLS (from ARC Harness Engineering governance):
     }
   }
 
-  // ─── AUTO MODE ──────────────────────────────────────────────────────────────
+  // --- AUTO MODE --------------------------------------------------------------
 
   const runAutoPipeline = async (prompt: string) => {
     setAutoStatus("running")
@@ -296,7 +296,7 @@ NON-NEGOTIABLE AGENT CONTROLS (from ARC Harness Engineering governance):
     const memories = await scoreMemories(prompt)
     const companyContext = await getCompanyContext()
     const memBlock = buildMemoryBlock(memories) + companyContext
-    if (memories.length) appendAutoLog(`↑ ${memories.length} institutional memory match${memories.length > 1 ? "es" : ""} injected`)
+    if (memories.length) appendAutoLog(`? ${memories.length} institutional memory match${memories.length > 1 ? "es" : ""} injected`)
 
     appendAutoLog("Agent 1 - Product Scoper starting...")
     pushAgentMsg()
@@ -312,7 +312,7 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
 ## Assumptions & Unknowns
 ## Self-Audit
 ## READY FOR PRODUCT.MD
-[full product.md document � must begin with # [Project Name]]
+[full product.md document ? must begin with # [Project Name]]
 
 Always end with the READY FOR PRODUCT.MD section with the full document.`
 
@@ -323,14 +323,14 @@ Always end with the READY FOR PRODUCT.MD section with the full document.`
       setSessionRunCost(c => c + cost1)
       const outputFlag = scanOutput(r1.text)
       await logPipelineRun({ agentName: "Product Scoper", model: AGENTS.SCOPING.model, inputTokens: r1.inputTokens, outputTokens: r1.outputTokens, latencyMs: r1.latencyMs, costUsd: cost1, guardrailFlag: !!outputFlag, flagReason: outputFlag || undefined })
-      appendAutoLog(`✓ product.md — ${r1.inputTokens}in/${r1.outputTokens}out tokens · $${cost1.toFixed(4)} · ${(r1.latencyMs/1000).toFixed(1)}s`)
-      if (outputFlag) { appendAutoLog(`⚠ Output scan: ${outputFlag}`); setGuardrailWarning(outputFlag) }
+      appendAutoLog(`? product.md � ${r1.inputTokens}in/${r1.outputTokens}out tokens � $${cost1.toFixed(4)} � ${(r1.latencyMs/1000).toFixed(1)}s`)
+      if (outputFlag) { appendAutoLog(`? Output scan: ${outputFlag}`); setGuardrailWarning(outputFlag) }
       if (r1.text.includes("READY FOR PRODUCT.MD")) {
         productMd = r1.text.split("## READY FOR PRODUCT.MD")[1]?.trim() || r1.text
       } else { productMd = r1.text }
       setState(s => ({ ...s, productMd, stage: "ARCHITECTING" }))
     } catch (e: any) {
-      appendAutoLog(`✗ Agent 1 error: ${e.message}`)
+      appendAutoLog(`? Agent 1 error: ${e.message}`)
       setAutoStatus("idle")
       return
     }
@@ -369,14 +369,14 @@ Always end with READY FOR TECHSTACK.MD.`
       setSessionRunCost(c => c + cost2)
       const outputFlag2 = scanOutput(r2.text)
       await logPipelineRun({ agentName: "Tech Architect", model: AGENTS.ARCHITECTING.model, inputTokens: r2.inputTokens, outputTokens: r2.outputTokens, latencyMs: r2.latencyMs, costUsd: cost2, guardrailFlag: !!outputFlag2, flagReason: outputFlag2 || undefined })
-      appendAutoLog(`✓ techstack.md — ${r2.inputTokens}in/${r2.outputTokens}out tokens · $${cost2.toFixed(4)} · ${(r2.latencyMs/1000).toFixed(1)}s`)
-      if (outputFlag2) { appendAutoLog(`⚠ Output scan: ${outputFlag2}`); setGuardrailWarning(outputFlag2) }
+      appendAutoLog(`? techstack.md � ${r2.inputTokens}in/${r2.outputTokens}out tokens � $${cost2.toFixed(4)} � ${(r2.latencyMs/1000).toFixed(1)}s`)
+      if (outputFlag2) { appendAutoLog(`? Output scan: ${outputFlag2}`); setGuardrailWarning(outputFlag2) }
       if (r2.text.includes("READY FOR TECHSTACK.MD")) {
         techstackMd = r2.text.split("## READY FOR TECHSTACK.MD")[1]?.trim() || r2.text
       } else { techstackMd = r2.text }
       setState(s => ({ ...s, techstackMd, stage: "GOVERNING" }))
     } catch (e: any) {
-      appendAutoLog(`✗ Agent 2 error: ${e.message}`)
+      appendAutoLog(`? Agent 2 error: ${e.message}`)
       setAutoStatus("idle")
       return
     }
@@ -389,7 +389,7 @@ ${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
 
-MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW � not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
+MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW ? not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
 
 OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not rename, reorder, merge, or skip any section:
 ## Regulatory Assessment
@@ -412,13 +412,13 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
       setSessionRunCost(c => c + cost3a)
       const outputFlag3a = scanOutput(r3a.text)
       await logPipelineRun({ agentName: "Governance Assessor", model: AGENTS.GOVERNING.model, inputTokens: r3a.inputTokens, outputTokens: r3a.outputTokens, latencyMs: r3a.latencyMs, costUsd: cost3a, guardrailFlag: !!outputFlag3a, flagReason: outputFlag3a || undefined })
-      appendAutoLog(`✓ governance.md — ${r3a.inputTokens}in/${r3a.outputTokens}out tokens · ${cost3a.toFixed(4)} · ${(r3a.latencyMs/1000).toFixed(1)}s`)
-      if (outputFlag3a) { appendAutoLog(`⚠ Output scan: ${outputFlag3a}`); setGuardrailWarning(outputFlag3a) }
+      appendAutoLog(`? governance.md � ${r3a.inputTokens}in/${r3a.outputTokens}out tokens � ${cost3a.toFixed(4)} � ${(r3a.latencyMs/1000).toFixed(1)}s`)
+      if (outputFlag3a) { appendAutoLog(`? Output scan: ${outputFlag3a}`); setGuardrailWarning(outputFlag3a) }
       if (r3a.text.includes("READY FOR GOVERNANCE.MD")) {
         governanceMd = r3a.text.split("## READY FOR GOVERNANCE.MD")[1]?.trim() || r3a.text
       } else { governanceMd = r3a.text }
     } catch (e: any) {
-      appendAutoLog(`✗ Agent 3 error: ${e.message}`)
+      appendAutoLog(`? Agent 3 error: ${e.message}`)
       setAutoStatus("idle")
       return
     }
@@ -429,19 +429,19 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
       const cost3b = calcCost(AGENTS.GOVERNING.model, r3b.inputTokens, r3b.outputTokens)
       setSessionRunCost(c => c + cost3b)
       await logPipelineRun({ agentName: "Evidence Pack Compiler", model: AGENTS.GOVERNING.model, inputTokens: r3b.inputTokens, outputTokens: r3b.outputTokens, latencyMs: r3b.latencyMs, costUsd: cost3b, guardrailFlag: false })
-      appendAutoLog(`✓ evidence-pack.md — ${r3b.inputTokens}in/${r3b.outputTokens}out tokens · ${cost3b.toFixed(4)} · ${(r3b.latencyMs/1000).toFixed(1)}s`)
+      appendAutoLog(`? evidence-pack.md � ${r3b.inputTokens}in/${r3b.outputTokens}out tokens � ${cost3b.toFixed(4)} � ${(r3b.latencyMs/1000).toFixed(1)}s`)
       evidencePackMd = r3b.text
       setState(s => ({ ...s, governanceMd, stage: "COMPLETE" }))
-      appendAutoLog("✓ All 4 documents complete")
+      appendAutoLog("? All 4 documents complete")
     } catch (e: any) {
-      appendAutoLog(`✗ Evidence pack error: ${e.message}`)
+      appendAutoLog(`? Evidence pack error: ${e.message}`)
       setAutoStatus("idle")
       return
     }
 
     appendAutoLog("Registering project and submitting for approval...")
     setAutoStatus("saving")
-    await autoSaveAndSubmit(prompt, productMd, techstackMd, governanceMd, session?.id || null)
+    await autoSaveAndSubmit(prompt, productMd, techstackMd, governanceMd, evidencePackMd, session?.id || null)
   }
 
   const autoSaveAndSubmit = async (
@@ -493,7 +493,7 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
             gms.map((gm: any) => ({
               userId: gm.id,
               title: "New project pending approval",
-              body: `${projectCode} — "${projectName}" was registered automatically by the AI pipeline and is awaiting your review.`,
+              body: `${projectCode} � "${projectName}" was registered automatically by the AI pipeline and is awaiting your review.`,
               type: "APPROVAL_REQUIRED",
               link: `/approvals`,
             }))
@@ -504,15 +504,15 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
       try { if (sessionId) await sb.from("PipelineSession").update({ projectId: project.id, status: "COMPLETE" }).eq("id", sessionId) } catch {}
 
       setState(s => ({ ...s, projectId: project.id }))
-      appendAutoLog(`✓ ${projectCode} registered — approval request submitted to GM`)
+      appendAutoLog(`? ${projectCode} registered � approval request submitted to GM`)
       setAutoStatus("done")
     } catch (e: any) {
-      appendAutoLog(`✗ Save error: ${e.message}`)
+      appendAutoLog(`? Save error: ${e.message}`)
       setAutoStatus("idle")
     }
   }
 
-  // ─── MANUAL MODE ─────────────────────────────────────────────────────────────
+  // --- MANUAL MODE -------------------------------------------------------------
 
   const runAgent1 = async (prompt: string, sessionId: string | null) => {
     setStreaming(true)
@@ -535,7 +535,7 @@ OUTPUT STRUCTURE - use these EXACT section headings in this EXACT order. Do not 
 ## Self-Audit
 Then EITHER ask ONE clarifying question if truly needed OR write:
 ## READY FOR PRODUCT.MD
-[full product.md document � must begin with # [Project Name]]
+[full product.md document ? must begin with # [Project Name]]
 
 Be thorough and show your reasoning. Think out loud.`
     try {
@@ -621,7 +621,7 @@ ${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
 
-MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW � not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
+MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW ? not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
 
 Build paths (INFORMATIVE ONLY - never blocks progress):
 - SELF-BUILD: User can proceed independently with approved tools
@@ -769,15 +769,15 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
         </div>
       </div>
 
-      {/* Guardrail warning — non-blocking banner */}
+      {/* Guardrail warning � non-blocking banner */}
       {guardrailWarning && (
         <div style={{ padding: "10px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
           <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, stroke: "#dc2626", fill: "none", strokeWidth: 2, flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <div style={{ flex: 1 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#dc2626" }}>Security flag (advisory) — </span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#dc2626" }}>Security flag (advisory) � </span>
             <span style={{ fontSize: 12, color: "#7f1d1d" }}>{guardrailWarning}</span>
           </div>
-          <button onClick={() => setGuardrailWarning(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#dc2626", padding: "0 4px" }}>×</button>
+          <button onClick={() => setGuardrailWarning(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#dc2626", padding: "0 4px" }}>�</button>
         </div>
       )}
 
@@ -795,7 +795,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                   <span style={{ fontSize: 10, fontWeight: 700, color: checked === LIFECYCLE_STAGES.length ? "var(--grn)" : "var(--org)", background: checked === LIFECYCLE_STAGES.length ? "#f0fff4" : "#fff8f0", padding: "2px 8px", borderRadius: 10 }}>
                     {checked}/{LIFECYCLE_STAGES.length} stages
                   </span>
-                  <span style={{ fontSize: 10, color: "var(--g500)" }}>Advisory — you can start at any time</span>
+                  <span style={{ fontSize: 10, color: "var(--g500)" }}>Advisory � you can start at any time</span>
                 </div>
                 <div style={{ height: 3, background: "var(--g100)", borderRadius: 2, marginTop: 6, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${pct}%`, background: checked === LIFECYCLE_STAGES.length ? "var(--grn)" : "var(--org)", borderRadius: 2, transition: "width 0.3s" }} />
@@ -841,7 +841,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--g700)", lineHeight: 1.6, marginBottom: 12 }}>
-                Describe your idea once. The AI pipeline runs all 3 agents back-to-back, registers the project, and submits it for GM approval — while you focus on other work.
+                Describe your idea once. The AI pipeline runs all 3 agents back-to-back, registers the project, and submits it for GM approval � while you focus on other work.
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {["All 3 agents run automatically", "Project auto-registered on completion", "Approval request sent to GM", "Notification delivered instantly"].map(f => (
@@ -871,7 +871,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--g700)", lineHeight: 1.6, marginBottom: 12 }}>
-                Step through each agent one at a time. Review and approve outputs between stages — refine product.md before architecture begins, review the stack before governance runs.
+                Step through each agent one at a time. Review and approve outputs between stages � refine product.md before architecture begins, review the stack before governance runs.
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {["Review product.md before architecture", "Approve or refine at each stage", "Full conversation with each agent", "Register manually when ready"].map(f => (
@@ -923,7 +923,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
       {state.stage === "IDLE" && mode !== null && (
         <div className="card">
           <div className="card-head">
-            <h3>{mode === "AUTO" ? "Describe your idea — the agent handles the rest" : "What do you want to build?"}</h3>
+            <h3>{mode === "AUTO" ? "Describe your idea � the agent handles the rest" : "What do you want to build?"}</h3>
             <button onClick={() => setMode(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--g500)", padding: "2px 8px", borderRadius: 4, border: "1px solid var(--g200)" }}>
               Switch mode
             </button>
@@ -932,10 +932,10 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
             {mode === "AUTO" && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#faf5ff", borderRadius: 8, marginBottom: 12, border: "1px solid #e9d5ff" }}>
                 <svg viewBox="0 0 24 24" style={{ width: 14, height: 14, stroke: "#7c3aed", fill: "none", strokeWidth: 2, strokeLinecap: "round", flexShrink: 0 }}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                <span style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600 }}>Auto mode — all 3 agents will run unattended. You'll be notified when it's done.</span>
+                <span style={{ fontSize: 11, color: "#7c3aed", fontWeight: 600 }}>Auto mode � all 3 agents will run unattended. You'll be notified when it's done.</span>
               </div>
             )}
-            <textarea className="form-input" rows={mode === "AUTO" ? 3 : 5} placeholder={mode === "AUTO" ? "e.g. A claims intake portal for personal lines that integrates with our core system and sends SMS updates to policyholders..." : "Describe your idea in plain language. The more context the better — what problem does it solve, who uses it, what does success look like..."} value={userInput} onChange={e => setUserInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && e.metaKey) startPipeline() }} style={{ marginBottom: 12 }} />
+            <textarea className="form-input" rows={mode === "AUTO" ? 3 : 5} placeholder={mode === "AUTO" ? "e.g. A claims intake portal for personal lines that integrates with our core system and sends SMS updates to policyholders..." : "Describe your idea in plain language. The more context the better � what problem does it solve, who uses it, what does success look like..."} value={userInput} onChange={e => setUserInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && e.metaKey) startPipeline() }} style={{ marginBottom: 12 }} />
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 11, color: "var(--g400)" }}>Cmd+Enter to start</span>
               <button
@@ -971,11 +971,11 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
           <div className="card-body">
             <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
               <div style={{ flex: 1 }}>
-                <AutoProgressStep label="Product Scoper — define requirements" status={autoStep1 as any} color="var(--org)" />
+                <AutoProgressStep label="Product Scoper � define requirements" status={autoStep1 as any} color="var(--org)" />
                 <div style={{ width: 1, height: 12, background: "var(--g100)", marginLeft: 15 }} />
-                <AutoProgressStep label="Tech Architect — design the stack" status={autoStep2 as any} color="var(--grn)" />
+                <AutoProgressStep label="Tech Architect � design the stack" status={autoStep2 as any} color="var(--grn)" />
                 <div style={{ width: 1, height: 12, background: "var(--g100)", marginLeft: 15 }} />
-                <AutoProgressStep label="Governance Assessor — assess risk & compliance" status={autoStep3 as any} color="#7c3aed" />
+                <AutoProgressStep label="Governance Assessor � assess risk & compliance" status={autoStep3 as any} color="#7c3aed" />
                 {(autoStatus === "saving" || autoStatus === "done") && (
                   <>
                     <div style={{ width: 1, height: 12, background: "var(--g100)", marginLeft: 15 }} />
@@ -988,14 +988,14 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
                 {autoLog.length === 0 ? (
                   <div style={{ fontSize: 11, color: "var(--g400)", fontStyle: "italic" }}>Starting...</div>
                 ) : autoLog.map((line, i) => (
-                  <div key={i} style={{ fontSize: 11, color: line.startsWith("✓") ? "var(--grn)" : line.startsWith("✗") ? "#dc2626" : line.startsWith("⚠") ? "#d97706" : line.startsWith("↑") ? "#7c3aed" : "var(--g700)", marginBottom: 4, fontFamily: "monospace" }}>{line}</div>
+                  <div key={i} style={{ fontSize: 11, color: line.startsWith("?") ? "var(--grn)" : line.startsWith("?") ? "#dc2626" : line.startsWith("?") ? "#d97706" : line.startsWith("?") ? "#7c3aed" : "var(--g700)", marginBottom: 4, fontFamily: "monospace" }}>{line}</div>
                 ))}
               </div>
             </div>
 
             {autoStatus === "done" && state.projectId && (
               <div style={{ marginTop: 20, padding: 16, background: "#f0fff4", borderRadius: 10, border: "1px solid #bbf7d0", textAlign: "center" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#166534", marginBottom: 6 }}>Pipeline complete — project registered</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#166534", marginBottom: 6 }}>Pipeline complete � project registered</div>
                 <div style={{ fontSize: 12, color: "#15803d", marginBottom: 14 }}>Approval request submitted to GM. You'll be notified when a decision is made.</div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                   <a href={`/projects/detail?id=${state.projectId}`}><button className="btn btn-org" style={{ fontSize: 12 }}>View project</button></a>
@@ -1122,7 +1122,7 @@ IMPORTANT: Always produce both documents. ARC-REQUIRED is informative only.`
               <h3>Run scorecard</h3>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {sessionRunCost > 0 && <span style={{ fontSize: 11, color: "var(--g500)" }}>Total cost: ${sessionRunCost.toFixed(4)}</span>}
-                <Link href="/observability"><button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>View observability →</button></Link>
+                <Link href="/observability"><button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>View observability ?</button></Link>
               </div>
             </div>
             <div className="card-body">
