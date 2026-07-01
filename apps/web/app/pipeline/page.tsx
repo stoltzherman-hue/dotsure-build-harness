@@ -97,9 +97,34 @@ function AutoProgressStep({ label, status, color }: { label: string; status: "wa
   )
 }
 
+// Reports the pass/escalate verdict back to Leader OS, if this pipeline run
+// was launched from there (leaderRequestId present in the URL). Routed
+// through our own /api/notify-leader-os so the shared secret stays
+// server-side - never shipped to the browser. Best-effort - never blocks or
+// throws into the pipeline flow.
+async function notifyLeaderOS(
+  leaderRequestId: string | null,
+  decision: "PROCEED" | "BLOCKED",
+  riskTier: string,
+  projectCode?: string
+) {
+  if (!leaderRequestId) return
+  try {
+    await fetch("/api/notify-leader-os", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leaderRequestId, decision, riskTier, projectCode }),
+    })
+  } catch {
+    // best-effort - the leader can still see the verdict on this page
+  }
+}
+
 function PipelineInner() {
   const { profile } = useAuth()
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const leaderRequestId = searchParams.get("leaderRequestId")
   const bottomRef = useRef<HTMLDivElement>(null)
   const [userInput, setUserInput] = useState("")
   const [interjectInput, setInterjectInput] = useState("")
@@ -442,6 +467,7 @@ RISK TIER: LOW, MEDIUM, HIGH, or CRITICAL (exactly one word, on its own line, im
 
     if (canSelfServe) {
       appendAutoLog(`? Verdict: LOW risk, no new infrastructure needed - you may build this yourself`)
+      notifyLeaderOS(leaderRequestId, "PROCEED", riskTier)
       setAutoStatus("done")
       return
     }
@@ -494,6 +520,8 @@ RISK TIER: LOW, MEDIUM, HIGH, or CRITICAL (exactly one word, on its own line, im
       }).select().single()
 
       if (!project) throw new Error("Failed to create project")
+
+      notifyLeaderOS(leaderRequestId, "BLOCKED", riskTier, projectCode)
 
       const evidencePack = evidencePackMd || ""
 
