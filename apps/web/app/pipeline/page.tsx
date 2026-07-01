@@ -389,6 +389,8 @@ ${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
 
+MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW — not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
+
 Structure:
 ## Regulatory assessment (POPIA, FAIS, PPR, TCF, Insurance Act)
 ## Risk classification (LOW/MEDIUM/HIGH/CRITICAL with justification)
@@ -604,6 +606,8 @@ You MUST always end your response with the following section, even if you have q
 ${GUARDRAILS}${memBlock}
 
 Your job: assess regulatory exposure, technical complexity, determine build path, produce governance.md AND an evidence pack.
+
+MANDATORY: The governance.md document you produce MUST open with an EXECUTIVE SUMMARY section before anything else. This section must be exactly 6 lines: (1) One-line project description, (2) Overall risk rating with one-sentence justification, (3) Recommended build path in plain language, (4) Estimated minimum timeline to go-live, (5) The single most critical decision or action required from leadership right now, (6) Status line: "PENDING HUMAN REVIEW — not approved for circulation." Format this section as a clean, bordered box using markdown. No jargon. Write it so a senior executive who reads nothing else understands the situation in 20 seconds.
 
 Build paths (INFORMATIVE ONLY - never blocks progress):
 - SELF-BUILD: User can proceed independently with approved tools
